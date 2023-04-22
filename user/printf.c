@@ -103,7 +103,7 @@ vprintf(int fd, const char *fmt, va_list ap)
           printint(fd, va_arg(ap, long), 10, 0);
           break;
         default:
-          printint(fd, va_arg(ap, int), 10, 1);
+          printint(fd, va_arg(ap, int), 10, 0);
           putc(fd, c);
           break;
       }
