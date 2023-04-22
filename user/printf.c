@@ -11,11 +11,11 @@ putc(int fd, char c)
 }
 
 static void
-printint(int fd, int xx, int base, int sgn)
+printint(int fd, long xx, int base, int sgn)
 {
   char buf[16];
   int i, neg;
-  uint x;
+  unsigned long x;
 
   neg = 0;
   if(sgn && xx < 0){
@@ -45,7 +45,7 @@ printptr(int fd, uint64 x) {
     putc(fd, digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
-// Print to the given fd. Only understands %d, %x, %p, %s.
+// Print to the given fd. Only understands %d, $l, %x, %p, %s, %u, %ul.
 void
 vprintf(int fd, const char *fmt, va_list ap)
 {
@@ -62,30 +62,50 @@ vprintf(int fd, const char *fmt, va_list ap)
         putc(fd, c);
       }
     } else if(state == '%'){
-      if(c == 'd'){
-        printint(fd, va_arg(ap, int), 10, 1);
-      } else if(c == 'l') {
-        printint(fd, va_arg(ap, uint64), 10, 0);
-      } else if(c == 'x') {
-        printint(fd, va_arg(ap, int), 16, 0);
-      } else if(c == 'p') {
-        printptr(fd, va_arg(ap, uint64));
-      } else if(c == 's'){
-        s = va_arg(ap, char*);
-        if(s == 0)
-          s = "(null)";
-        while(*s != 0){
-          putc(fd, *s);
-          s++;
-        }
-      } else if(c == 'c'){
-        putc(fd, va_arg(ap, uint));
-      } else if(c == '%'){
-        putc(fd, c);
-      } else {
-        // Unknown % sequence.  Print it to draw attention.
-        putc(fd, '%');
-        putc(fd, c);
+      switch (c) {
+        case 'd':
+          printint(fd, va_arg(ap, int), 10, 1);
+          break;
+        case 'l':
+          printint(fd, va_arg(ap, long), 10, 1);
+          break;
+        case 'u':
+          state = 'u';
+          break;
+        case 'x':
+          printint(fd, va_arg(ap, int), 16, 0);
+          break;
+        case 'p':
+          printptr(fd, va_arg(ap, uint64));
+          break;
+        case 's':
+          s = va_arg(ap, char*);
+          if(s == 0)
+            s = "(null)";
+          while(*s != 0){
+            putc(fd, *s);
+            s++;
+          }
+          break;
+        case 'c':
+          putc(fd, va_arg(ap, uint));
+          break;
+        case '%':
+          putc(fd, c);
+        default:
+          putc(fd, '%');
+          putc(fd, c);
+      }
+      state = state == '%' ? 0 : state;
+    } else if (state == 'u') {
+      switch(c) {
+        case 'l':
+          printint(fd, va_arg(ap, long), 10, 0);
+          break;
+        default:
+          printint(fd, va_arg(ap, int), 10, 1);
+          putc(fd, c);
+          break;
       }
       state = 0;
     }
