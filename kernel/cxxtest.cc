@@ -2,7 +2,7 @@
 
 template<int What>
 void a_template() {
-	printf(const_cast<char*>("cpp printed: %d\n"), What);
+	printk(const_cast<char*>(KERN_INFO"cpp printed: %d\n"), What);
 }
 extern "C"
 uint64 sys_cxx() {

@@ -74,7 +74,7 @@ balloc(uint dev)
     }
     brelse(bp);
   }
-  printk("balloc: out of blocks\n");
+  pr_notice("balloc: out of blocks\n");
   return 0;
 }
 
@@ -205,7 +205,7 @@ ialloc(uint dev, short type)
     }
     brelse(bp);
   }
-  printk("ialloc: no inodes\n");
+  pr_notice("ialloc: no inodes\n");
   return 0;
 }
 

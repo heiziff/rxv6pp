@@ -63,8 +63,8 @@ usertrap(void)
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
-    printk("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-    printk("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+    pr_warning("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+    pr_warning("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     setkilled(p);
   }
 
@@ -140,8 +140,8 @@ kerneltrap()
     panic("kerneltrap: interrupts enabled");
 
   if((which_dev = devintr()) == 0){
-    printk("scause %p\n", scause);
-    printk("sepc=%p stval=%p\n", r_sepc(), r_stval());
+    pr_emerg("scause %p\n", scause);
+    pr_emerg("sepc=%p stval=%p\n", r_sepc(), r_stval());
     panic("kerneltrap");
   }
 
@@ -186,7 +186,7 @@ devintr()
     } else if(irq == VIRTIO0_IRQ){
       virtio_disk_intr();
     } else if(irq){
-      printk("unexpected interrupt irq=%d\n", irq);
+      pr_notice("unexpected interrupt irq=%d\n", irq);
     }
 
     // the PLIC allows each device to raise at most one

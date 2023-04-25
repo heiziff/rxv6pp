@@ -15,7 +15,7 @@ extern "C" {
 #include "kernel/proc.h"
 #include "kernel/stat.h"
 #include "kernel/mmap.h"
-
+#include "kernel/printk.h"
 
 // start.c
 void            timerhalt(void);
@@ -87,10 +87,6 @@ void            pipeclose(struct pipe*, int);
 int             piperead(struct pipe*, uint64, int);
 int             pipewrite(struct pipe*, uint64, int);
 
-// printk.c
-void            printk(char*, ...);
-void            panic(char*) __attribute__((noreturn));
-void            printkinit(void);
 
 // proc.c
 int             cpuid(void);

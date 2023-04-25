@@ -50,6 +50,27 @@ printptr(uint64 x)
     consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
+void
+printcolor(char level)
+{
+  char * colorStr = "\e[0m";
+  if (level == KERN_EMERG[0]) {
+    colorStr = "\e[38;5;196m";
+  } else if (level == KERN_WARNING[0]) {
+    colorStr = "\e[38;5;172m";
+  } else if (level == KERN_NOTICE[0]) {
+    colorStr = "\e[38;5;11m";
+  } else if (level == KERN_INFO[0]) {
+    colorStr = "\e[38;5;240m";
+  } 
+
+  char c;
+  for (int i = 0; (c = colorStr[i] & 0xff) != 0; i++) {
+    consputc(c);
+  }
+
+}
+
 // Print to the console. only understands %d, %x, %p, %s.
 void
 printk(char *fmt, ...)
@@ -62,11 +83,13 @@ printk(char *fmt, ...)
   if(locking)
     acquire(&pr.lock);
 
-  if (fmt == 0)
+  if (fmt == 0) 
     panic("null fmt");
 
+  printcolor(fmt[0]);
+
   va_start(ap, fmt);
-  for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
+  for(i = 1; (c = fmt[i] & 0xff) != 0; i++){
     if(c != '%'){
       consputc(c);
       continue;
@@ -102,6 +125,8 @@ printk(char *fmt, ...)
   }
   va_end(ap);
 
+  printcolor(0);
+
   if(locking)
     release(&pr.lock);
 }
@@ -110,9 +135,9 @@ void
 panic(char *s)
 {
   pr.locking = 0;
-  printk("panic: ");
-  printk(s);
-  printk("\n");
+  pr_emerg("panic: ");
+  printk(KERN_EMERG "%s", s); // The only place where a dynamic string is an argument of printk. Thanks
+  pr_emerg("\n");
   panicked = 1; // freeze uart output from other CPUs
   timerhalt();
   for(;;)
