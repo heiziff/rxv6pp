@@ -11,6 +11,6 @@ uint64 sys_hello_kernel(void)
 {
     int num;
     argint(0, &num);
-    printf("Hello Kernelspace, Group %d\n", num);
+    printk("Hello Kernelspace, Group %d\n", num);
     return 2;
 }

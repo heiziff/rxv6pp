@@ -1,5 +1,5 @@
 //
-// formatted console output -- printf, panic.
+// formatted kernel logging -- printk, panic.
 //
 
 #include <stdarg.h>
@@ -8,7 +8,7 @@
 
 volatile int panicked = 0;
 
-// lock to avoid interleaving concurrent printf's.
+// lock to avoid interleaving concurrent printk's.
 static struct {
   struct spinlock lock;
   int locking;
@@ -52,7 +52,7 @@ printptr(uint64 x)
 
 // Print to the console. only understands %d, %x, %p, %s.
 void
-printf(char *fmt, ...)
+printk(char *fmt, ...)
 {
   va_list ap;
   int i, c, locking;
@@ -110,9 +110,9 @@ void
 panic(char *s)
 {
   pr.locking = 0;
-  printf("panic: ");
-  printf(s);
-  printf("\n");
+  printk("panic: ");
+  printk(s);
+  printk("\n");
   panicked = 1; // freeze uart output from other CPUs
   timerhalt();
   for(;;)
@@ -120,7 +120,7 @@ panic(char *s)
 }
 
 void
-printfinit(void)
+printkinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
