@@ -11,25 +11,23 @@ putc(int fd, char c)
 }
 
 static void
-printint(int fd, long xx, int base, int sgn)
+printnum(int fd, long xx, int base, int sign)
 {
-  char buf[16];
-  int i, neg;
-  unsigned long x;
+  char buf[64]; // We can print up to 64 bit numbers in binary
+  long i;
+  uint64 x;
 
-  neg = 0;
-  if(sgn && xx < 0){
-    neg = 1;
+  if(sign && (sign = xx < 0))
     x = -xx;
-  } else {
+  else
     x = xx;
-  }
 
   i = 0;
-  do{
+  do {
     buf[i++] = digits[x % base];
-  }while((x /= base) != 0);
-  if(neg)
+  } while((x /= base) != 0);
+
+  if(sign)
     buf[i++] = '-';
 
   while(--i >= 0)
@@ -45,7 +43,7 @@ printptr(int fd, uint64 x) {
     putc(fd, digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
-// Print to the given fd. Only understands %d, $l, %x, %p, %s, %u, %ul.
+// Print to the given fd. Only understands %d, $l, %x, %b, %p, %s, %u, %ul, %bs
 void
 vprintf(int fd, const char *fmt, va_list ap)
 {
@@ -64,16 +62,19 @@ vprintf(int fd, const char *fmt, va_list ap)
     } else if(state == '%'){
       switch (c) {
         case 'd':
-          printint(fd, va_arg(ap, int), 10, 1);
+          printnum(fd, va_arg(ap, int), 10, 1);
           break;
         case 'l':
-          printint(fd, va_arg(ap, long), 10, 1);
+          printnum(fd, va_arg(ap, long), 10, 1);
           break;
         case 'u':
           state = 'u';
           break;
         case 'x':
-          printint(fd, va_arg(ap, int), 16, 0);
+          printnum(fd, va_arg(ap, int), 16, 0);
+          break;
+        case 'b':
+          printnum(fd, va_arg(ap, uint64), 2, 0);
           break;
         case 'p':
           printptr(fd, va_arg(ap, uint64));
@@ -100,10 +101,10 @@ vprintf(int fd, const char *fmt, va_list ap)
     } else if (state == 'u') {
       switch(c) {
         case 'l':
-          printint(fd, va_arg(ap, long), 10, 0);
+          printnum(fd, va_arg(ap, long), 10, 0);
           break;
         default:
-          printint(fd, va_arg(ap, int), 10, 0);
+          printnum(fd, va_arg(ap, int), 10, 0);
           putc(fd, c);
           break;
       }
