@@ -1,5 +1,6 @@
 K=kernel
 U=user
+O=own
 
 OBJS = \
   $K/entry.o \
@@ -160,6 +161,7 @@ UPROGS=\
 	$U/_hello\
 	$U/_hello_kernel\
 	$U/_test_printf\
+	$O/_test_own\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

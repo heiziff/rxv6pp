@@ -9,5 +9,5 @@ void main(int argc, char** argv)
 		printf("Not enough Args");
 		exit(-1);
 	}
-	printf("Hello World from Group %s\n", argv[1]);
+	printf("Hello Userspace, Group %s\n", argv[1]);
 }
