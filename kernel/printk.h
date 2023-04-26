@@ -10,6 +10,15 @@ extern "C" {
 #define KERN_WARNING "1"
 #define KERN_NOTICE  "2"
 #define KERN_INFO    "3"
+#define KERN_DEFAULT "4"
+
+// Integer equivalents of KERN_<LEVEL>
+// Inspired by linux kernel
+#define LOGLEVEL_EMERG    0
+#define LOGLEVEL_WARNING  1
+#define LOGLEVEL_NOTICE   2
+#define LOGLEVEL_INFO     3
+#define LOGLEVEL_DEFAULT  4
 
 #define pr_emerg(str, ...)   printk(KERN_EMERG str,  ##__VA_ARGS__)
 #define pr_warning(str, ...) printk(KERN_WARNING str,##__VA_ARGS__)

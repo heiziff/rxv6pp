@@ -17,11 +17,11 @@ static struct {
 static char digits[] = "0123456789abcdef";
 
 static void
-printint(int xx, int base, int sign)
+printnum(long xx, int base, int sign)
 {
-  char buf[16];
-  int i;
-  uint x;
+  char buf[64]; // We can print up to 64 bit numbers in binary
+  long i;
+  uint64 x;
 
   if(sign && (sign = xx < 0))
     x = -xx;
@@ -51,21 +51,20 @@ printptr(uint64 x)
 }
 
 void
-printcolor(char level)
+setoutputpriority(char level)
 {
-  char * colorStr = "\e[0m";
-  if (level == KERN_EMERG[0]) {
-    colorStr = "\e[38;5;196m";
-  } else if (level == KERN_WARNING[0]) {
-    colorStr = "\e[38;5;172m";
-  } else if (level == KERN_NOTICE[0]) {
-    colorStr = "\e[38;5;11m";
-  } else if (level == KERN_INFO[0]) {
-    colorStr = "\e[38;5;240m";
-  } 
+  const char* levelColorMap[] = {
+    [LOGLEVEL_EMERG]    "\e[38;5;196m",
+    [LOGLEVEL_WARNING]  "\e[38;5;172m",
+    [LOGLEVEL_NOTICE]   "\e[38;5;11m",
+    [LOGLEVEL_INFO]     "\e[38;5;240m",
+    [LOGLEVEL_DEFAULT]  "\e[0m",
+  };
+  
+  int colorIndex = ( KERN_EMERG[0] <= level && level <= KERN_DEFAULT[0]) ? level - 0x30 : LOGLEVEL_DEFAULT;
 
   char c;
-  for (int i = 0; (c = colorStr[i] & 0xff) != 0; i++) {
+  for (int i = 0; (c = levelColorMap[colorIndex][i] & 0xff) != 0; i++) {
     consputc(c);
   }
 
@@ -86,7 +85,7 @@ printk(char *fmt, ...)
   if (fmt == 0) 
     panic("null fmt");
 
-  printcolor(fmt[0]);
+  setoutputpriority(fmt[0]);
 
   va_start(ap, fmt);
   for(i = 1; (c = fmt[i] & 0xff) != 0; i++){
@@ -99,10 +98,10 @@ printk(char *fmt, ...)
       break;
     switch(c){
     case 'd':
-      printint(va_arg(ap, int), 10, 1);
+      printnum(va_arg(ap, int), 10, 1);
       break;
     case 'x':
-      printint(va_arg(ap, int), 16, 1);
+      printnum(va_arg(ap, int), 16, 1);
       break;
     case 'p':
       printptr(va_arg(ap, uint64));
@@ -125,7 +124,7 @@ printk(char *fmt, ...)
   }
   va_end(ap);
 
-  printcolor(0);
+  setoutputpriority(LOGLEVEL_DEFAULT);
 
   if(locking)
     release(&pr.lock);
