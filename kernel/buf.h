@@ -1,3 +1,15 @@
+/*! \file buf.h
+ * \brief fs cache structure
+ */
+
+#ifndef INCLUDED_kernel_buf_h
+#define INCLUDED_kernel_buf_h
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 struct buf {
   int valid;   // has data been read from disk?
   int disk;    // does disk "own" buf?
@@ -10,3 +22,11 @@ struct buf {
   uchar data[BSIZE];
 };
 
+
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

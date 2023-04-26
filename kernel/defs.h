@@ -1,3 +1,17 @@
+/*! \file defs.h
+ * \brief general kernel defines
+ *
+ * contains struct and function forward declarations
+ */
+
+#ifndef INCLUDED_kernel_defs_h
+#define INCLUDED_kernel_defs_h
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 struct buf;
 struct context;
 struct file;
@@ -187,3 +201,11 @@ void            virtio_disk_intr(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

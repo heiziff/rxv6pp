@@ -1,3 +1,15 @@
+/*! \file memlayout.h
+ * \brief specify memory layout for kernel and user space processes
+ */
+
+#ifndef INCLUDED_kernel_memlayout_h
+#define INCLUDED_kernel_memlayout_h
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 // Physical memory layout
 
 // qemu -machine virt is set up like this,
@@ -65,3 +77,11 @@
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
 #define TRAPFRAME (TRAMPOLINE - PGSIZE)
+
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

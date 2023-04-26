@@ -1,3 +1,15 @@
+/*! \file param.h
+ * \brief OS configuration parameters
+ */
+
+#ifndef INCLUDED_kernel_param_h
+#define INCLUDED_kernel_param_h
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #define NPROC        64  // maximum number of processes
 #define NCPU          8  // maximum number of CPUs
 #define NOFILE       16  // open files per process
@@ -11,3 +23,11 @@
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       2000  // size of file system in blocks
 #define MAXPATH      128   // maximum file path name
+
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

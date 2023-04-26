@@ -1,5 +1,14 @@
-// On-disk file system format.
-// Both the kernel and user programs use this header file.
+/*! \file fs.h
+ * \brief On-disk file system format.
+ * \remark Both the kernel and user programs use this header file.
+ */
+
+#ifndef INCLUDED_kernel_fs_h
+#define INCLUDED_kernel_fs_h
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 #define ROOTINO  1   // root i-number
@@ -58,3 +67,11 @@ struct dirent {
   char name[DIRSIZ];
 };
 
+
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

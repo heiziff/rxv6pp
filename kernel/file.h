@@ -1,3 +1,15 @@
+/*! \file file.h
+ * \brief on-disk and in-memory file system declarations
+ */
+
+#ifndef INCLUDED_kernel_file_h
+#define INCLUDED_kernel_file_h
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_DEVICE } type;
   int ref; // reference count
@@ -38,3 +50,11 @@ struct devsw {
 extern struct devsw devsw[];
 
 #define CONSOLE 1
+
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
