@@ -8,7 +8,8 @@ void main(int argc, char **argv) {
     printf("%p\n", 0xFFFFFFFFF);
     printf("%s\n", "hi");
     printf("%u, %u\n", 12,-12);
-    printf("%ul, %ul\n", 0xFFFFFFFFF, -0xFFFFFFFFF);
+    printf("%lu, %lu\n", 0xFFFFFFFFF, -0xFFFFFFFFF);
+    printf("%lul\n", 0xFFF);
     printf("%b, %b, %b, %b, %b\n", 0b0100, 0b1000000, 0xFF0FF, 2, 0xFFFFFFFFF);
     printf("%l, %x, %b\n", -1, -1, -1);
 }

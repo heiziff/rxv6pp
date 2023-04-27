@@ -43,72 +43,80 @@ printptr(int fd, uint64 x) {
     putc(fd, digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
-// Print to the given fd. Only understands %d, $l, %x, %b, %p, %s, %u, %ul, %bs
+// Print to the given fd. 
+// Supports:
+// %l, %lu, %lx, %lb, %d, %b, %x, %p, %c, %s, %u
 void
 vprintf(int fd, const char *fmt, va_list ap)
 {
   char *s;
-  int c, i, state;
+  int c, i;
+  for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
+    // If the character is not '%', just print it
+    // Characters following '%' are handled later
+    if (c != '%') {
+      putc(fd, c);
+      continue;
+    }
+    // Get the next char in the format string. Only called if previous char was '%'
+    c = fmt[++i] & 0xff;
 
-  state = 0;
-  for(i = 0; fmt[i]; i++){
-    c = fmt[i] & 0xff;
-    if(state == 0){
-      if(c == '%'){
-        state = '%';
-      } else {
-        putc(fd, c);
-      }
-    } else if(state == '%'){
-      switch (c) {
-        case 'd':
-          printnum(fd, va_arg(ap, int), 10, 1);
-          break;
-        case 'l':
-          printnum(fd, va_arg(ap, long), 10, 1);
-          break;
-        case 'u':
-          state = 'u';
-          break;
-        case 'x':
-          printnum(fd, va_arg(ap, int), 16, 0);
-          break;
-        case 'b':
-          printnum(fd, va_arg(ap, uint64), 2, 0);
-          break;
-        case 'p':
-          printptr(fd, va_arg(ap, uint64));
-          break;
-        case 's':
-          s = va_arg(ap, char*);
-          if(s == 0)
-            s = "(null)";
-          while(*s != 0){
-            putc(fd, *s);
-            s++;
-          }
-          break;
-        case 'c':
-          putc(fd, va_arg(ap, uint));
-          break;
-        case '%':
-          putc(fd, c);
-        default:
-          putc(fd, '%');
-          putc(fd, c);
-      }
-      state = state == '%' ? 0 : state;
-    } else if (state == 'u') {
+    switch(c) {
+    // First: The easy cases
+    case 'd': // Print int in decimal
+      printnum(fd, va_arg(ap, int), 10, 1);
+      break;
+    case 'u': // Print unsigned int decimal
+      printnum(fd, va_arg(ap, unsigned int), 10, 0);
+      break;
+    case 'l': // Print long in decimal
+      c = fmt[++i] & 0xff; // Look at the next char. Decrement later if it's a format char
       switch(c) {
-        case 'l':
-          printnum(fd, va_arg(ap, long), 10, 0);
-          break;
-        default:
-          printnum(fd, va_arg(ap, int), 10, 0);
-          putc(fd, c);
-          break;
+      case 'u': // Print unsigned long
+        printnum(fd, va_arg(ap, unsigned long), 10, 0);
+        break;
+      case 'x': // Print hexadecimal long
+        printnum(fd, va_arg(ap, long), 16, 0);
+        break;
+      case 'b': // Print binary long
+        printnum(fd, va_arg(ap, long), 2, 0);
+        break;
+      default: // Print long
+        printnum(fd, va_arg(ap, long), 10, 1);
+        i--; // Not a format char. Decrement i so it's printed properly
+        break;
       }
-      state = 0;
+      break;
+    case 'x': // Print int in hex
+      printnum(fd, va_arg(ap, int), 16, 0);
+      break;
+    case 'b': // Print int in binary
+      printnum(fd, va_arg(ap, int), 2, 0);
+      break;
+    case 'p': // Print a pointer
+      printptr(fd, va_arg(ap, uint64));
+      break;
+    case 'c': // Print a char
+      putc(fd, va_arg(ap, uint));
+      break;
+    case '%': //Print literal '%'
+      putc(fd, c);
+      break;
+    // And now the complicated ones
+    case 's': // Print a string
+      s = va_arg(ap, char*);
+      if (s == 0)
+        s = "(null)";
+      while(*s != 0){
+        putc(fd, *s);
+        s++;
+      }
+      break;
+
+    default: // Print %<sequence> for unknown sequences
+      putc(fd, '%');
+      putc(fd, c);
+      break;
     }
   }
 }
