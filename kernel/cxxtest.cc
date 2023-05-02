@@ -1,6 +1,3 @@
-#include "types.h"
-#include "syscall.h"
-#include "riscv.h"
 #include "defs.h"
 
 template<int What>
