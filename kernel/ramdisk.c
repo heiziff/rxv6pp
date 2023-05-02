@@ -14,6 +14,9 @@
 #include "fs.h"
 #include "buf.h"
 
+#define B_VALID 1 << 0
+#define B_DIRTY 1 << 1
+
 void
 ramdiskinit(void)
 {
