@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+#include "kernel/file.h"
+#include "kernel/proc.h"
+#include "kernel/stat.h"
 
 struct buf;
 struct context;

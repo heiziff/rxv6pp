@@ -9,6 +9,10 @@
 extern "C" {
 #endif
 
+#include "kernel/riscv.h"
+#include "kernel/param.h"
+#include "kernel/spinlock.h"
+
 
 // Saved registers for kernel context switches.
 struct context {

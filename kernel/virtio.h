@@ -9,6 +9,8 @@
 extern "C" {
 #endif
 
+#include "kernel/types.h"
+
 
 //
 // virtio device definitions.

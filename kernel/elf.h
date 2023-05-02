@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#include "kernel/types.h"
 
 // Format of an ELF executable file
 

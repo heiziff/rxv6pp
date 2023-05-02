@@ -10,6 +10,7 @@
 extern "C" {
 #endif
 
+#include "kernel/spinlock.h"
 
 // Long-term locks for processes
 struct sleeplock {

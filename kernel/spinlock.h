@@ -10,6 +10,7 @@
 extern "C" {
 #endif
 
+#include "kernel/types.h"
 
 // Mutual exclusion lock.
 struct spinlock {

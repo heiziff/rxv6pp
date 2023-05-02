@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#include "kernel/types.h"
 
 #ifndef __ASSEMBLER__
 

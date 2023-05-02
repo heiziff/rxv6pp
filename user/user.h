@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#include "kernel/stat.h"
 
 struct stat;
 
