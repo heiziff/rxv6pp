@@ -190,3 +190,13 @@ qemu-gdb: $K/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
+
+LANGUAGE_EXTENSION = c cpp cxx c++ cc
+COMPILETESTFOLDER = test
+COMPILETEST = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER)/*.$(ext)))
+COMPILEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST))))
+#$(info $$(COMPILETEST) is $(COMPILETEST))
+#$(info $$(COMPILEOUT) is $(COMPILEOUT))
+
+test: $(COMPILEOUT)
+
