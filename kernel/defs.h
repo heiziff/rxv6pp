@@ -15,16 +15,6 @@ extern "C" {
 #include "kernel/proc.h"
 #include "kernel/stat.h"
 
-struct buf;
-struct context;
-struct file;
-struct inode;
-struct pipe;
-struct proc;
-struct spinlock;
-struct sleeplock;
-struct stat;
-struct superblock;
 
 // bio.c
 void            binit(void);

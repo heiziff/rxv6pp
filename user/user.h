@@ -11,7 +11,6 @@ extern "C" {
 
 #include "kernel/stat.h"
 
-struct stat;
 
 // system calls
 int fork(void);
