@@ -25,6 +25,8 @@ typedef uint64 size_t;
 
 typedef uint64 pde_t;
 
+typedef uint8 bool_t;
+
 
 #ifdef __cplusplus
 }
