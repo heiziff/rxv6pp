@@ -5,6 +5,8 @@
 #ifndef INCLUDED_kernel_types_h
 #define INCLUDED_kernel_types_h
 
+#ifndef __ASSEMBLER__
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -25,6 +27,8 @@ typedef uint64 pde_t;
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif
