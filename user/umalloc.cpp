@@ -12,7 +12,7 @@ extern "C"
 #define HEADER_SIZE 8
 
 #define MIN_ALLOC_SIZE_SHIFT 4
-#define MAX_ALLOC_SIZE_SHIFT 26
+#define MAX_ALLOC_SIZE_SHIFT 10
 
 // Min alloc size is 16 Byte and max alloc size is 64 MiB because max Memory is
 // 128 MiB
@@ -23,61 +23,60 @@ extern "C"
 
 #define NULL nullptr
 
-  /*
-  Useful Macros for bucket calculations
-  */
+    /*
+    Useful Macros for bucket calculations
+    */
 
 #define BUCKET_SIZE_FOR_INDEX(IDX) (MAX_ALLOC_SIZE >> (IDX))
 
-  /*
-  Doubly linked list to track free blocks for every block size, supports
-  inserting (inserts at end), popping (pops from end) and removing (removes
-  from end).
-  */
-  typedef struct free_list_s
-  {
-    struct free_list_s *next;
-    struct free_list_s *prev;
-  } free_list_t;
+    /*
+    Doubly linked list to track free blocks for every block size, supports
+    inserting (inserts at end), popping (pops from end) and removing (removes
+    from end).
+    */
+    typedef struct free_list_s
+    {
+        struct free_list_s *next;
+        struct free_list_s *prev;
+    } free_list_t;
 
-  void
-  free_list_init (free_list_t &list)
-  {
-    list.next = &list;
-    list.prev = &list;
-  }
+    void
+    free_list_init(free_list_t &list)
+    {
+        list.next = &list;
+        list.prev = &list;
+    }
 
-  void
-  free_list_push (free_list_t &list, free_list_t *element)
-  {
-    free_list_t *last = list.prev;
+    void
+    free_list_push(free_list_t &list, free_list_t *element)
+    {
+        free_list_t *last = list.prev;
 
-    element->next = &list;
-    element->prev = last;
+        element->next = &list;
+        element->prev = last;
 
-    list.prev = element;
+        list.prev = element;
 
-    last->next = element;
-  }
+        last->next = element;
+    }
 
-  void
-  free_list_remove (free_list_t &element)
-  {
-    element.prev->next = element.next;
-    element.next->prev = element.prev;
-  }
+    void
+    free_list_remove(free_list_t &element)
+    {
+        element.prev->next = element.next;
+        element.next->prev = element.prev;
+    }
 
-  free_list_t *
-  free_list_pop (free_list_t &list)
-  {
-    if (list.prev == &list)
-      return NULL;
-    free_list_t *last = list.prev;
-    free_list_remove (*last);
+    free_list_t *
+    free_list_pop(free_list_t &list)
+    {
+        if (list.prev == &list)
+            return NULL;
+        free_list_t *last = list.prev;
+        free_list_remove(*last);
 
-    return last;
-  }
-
+        return last;
+    }
 
 #define LEFT_CHILD_USED 0x1
 #define RIGHT_CHILD_USED 0x2
@@ -86,392 +85,419 @@ extern "C"
 #define GET_LEFT_CHILD(IDX) (2 * (IDX) + 1)
 #define GET_RIGHT_CHILD(IDX) (2 * (IDX) + 2)
 
-#define GET_BUDDY(IDX) ((IDX) + 1)
+#define GET_BUDDY(IDX) ((((IDX)-1) ^ 1) + 1)
 
-  // To not immediately allocate/devide entire Adress-space, start with small
-  // limit and then grow it, as is needed
-  static size_t root_bucket_index;
+    // To not immediately allocate/devide entire Adress-space, start with small
+    // limit and then grow it, as is needed
+    static size_t root_bucket_index;
 
-  /*
-  Buckets to track free memory blocks of Zweierpotenzen.
-  Entries in bucket at index zero have size of entire possible Adress space
-  (here 100 MiB) Buckets from bucket_index_limit to (BUCKET_AMOUNT - 1) are
-  populated, buckets at earlier indices are populated, when more memory is
-  needed and the tree is grown.
-  */
-  static free_list_t buckets[BUCKET_AMOUNT];
+    /*
+    Buckets to track free memory blocks of Zweierpotenzen.
+    Entries in bucket at index zero have size of entire possible Adress space
+    (here 100 MiB) Buckets from bucket_index_limit to (BUCKET_AMOUNT - 1) are
+    populated, buckets at earlier indices are populated, when more memory is
+    needed and the tree is grown.
+    */
+    static free_list_t buckets[BUCKET_AMOUNT];
 
-  static uint8 *base_ptr;
+    static uint8 *base_ptr;
 
-  static uint8 *max_ptr;
+    static uint8 *max_ptr;
 
-  /*
-  Struct to keep track of binary tree nodes. Node contains information about
-  children
-  */
-  typedef struct buddy_node_s
-  {
-    uint8 state;
-  } buddy_node_t;
+    /*
+    Struct to keep track of binary tree nodes. Node contains information about
+    children
+    */
+    typedef struct buddy_node_s
+    {
+        uint8 state;
+    } buddy_node_t;
 
-  static buddy_node_t buddy_nodes[1 << (BUCKET_AMOUNT - 1)];
+    static buddy_node_t buddy_nodes[1 << (BUCKET_AMOUNT - 1)];
 
-  /*
-  Returns true, if the bit in the state of the node at index "idx"
-  */
-  bool_t
-  buddy_node_get_bit (size_t idx, uint8 bitmask)
-  {
-    return ((buddy_nodes[idx].state & bitmask) != 0);
-  }
+    /*
+    Returns true, if the bit in the state of the node at index "idx"
+    */
+    bool_t
+    buddy_node_get_bit(size_t idx, uint8 bitmask)
+    {
+        return ((buddy_nodes[idx].state & bitmask) != 0);
+    }
 
-  /*
-  Flips the given bit in the state of the node at index "idx"
-  */
-  void
-  buddy_node_flip_bit (size_t idx, uint8 bitmask)
-  {
-    buddy_nodes[idx].state ^= bitmask;
-  }
+    /*
+    Flips the given bit in the state of the node at index "idx"
+    */
+    void
+    buddy_node_flip_bit(size_t idx, uint8 bitmask)
+    {
+        buddy_nodes[idx].state ^= bitmask;
+    }
 
-  /*
-  Returns true, if exactly one child of a given node at index "idx" is used
-  */
-  bool_t
-  buddy_node_exactly_one_child_used (size_t idx)
-  {
-    buddy_node_t node = buddy_nodes[idx];
-    bool_t left_used = node.state & LEFT_CHILD_USED;
-    bool_t right_used = node.state & RIGHT_CHILD_USED;
+    /*
+    Returns true, if exactly one child of a given node at index "idx" is used
+    */
+    bool_t
+    buddy_node_exactly_one_child_used(size_t idx)
+    {
+        buddy_node_t node = buddy_nodes[idx];
+        bool_t left_used = node.state & LEFT_CHILD_USED;
+        bool_t right_used = node.state & RIGHT_CHILD_USED;
 
-    return left_used ^ right_used;
-  }
+        return left_used ^ right_used;
+    }
 
-  /*
-  Returns true, if both children of a given node at index "idx" aren't used
-  */
-  bool_t
-  buddy_node_no_child_used (size_t idx)
-  {
-    buddy_node_t node = buddy_nodes[idx];
-    bool_t left_used = node.state & LEFT_CHILD_USED;
-    bool_t right_used = node.state & RIGHT_CHILD_USED;
+    /*
+    Returns true, if both children of a given node at index "idx" aren't used
+    */
+    bool_t
+    buddy_node_no_child_used(size_t idx)
+    {
+        buddy_node_t node = buddy_nodes[idx];
+        bool_t left_used = node.state & LEFT_CHILD_USED;
+        bool_t right_used = node.state & RIGHT_CHILD_USED;
 
-    return !(left_used & right_used);
-  }
+        return !(left_used & right_used);
+    }
 
-  /*
-  Returns true, if both children of a given node at index "idx" are used (e.g.
-  have memory allocated)
-  */
-  bool_t
-  buddy_node_both_child_used (size_t idx)
-  {
-    buddy_node_t node = buddy_nodes[idx];
-    bool_t left_used = node.state & LEFT_CHILD_USED;
-    bool_t right_used = node.state & RIGHT_CHILD_USED;
+    /*
+    Returns true, if both children of a given node at index "idx" are used (e.g.
+    have memory allocated)
+    */
+    bool_t
+    buddy_node_both_child_used(size_t idx)
+    {
+        buddy_node_t node = buddy_nodes[idx];
+        bool_t left_used = node.state & LEFT_CHILD_USED;
+        bool_t right_used = node.state & RIGHT_CHILD_USED;
 
-    return left_used & right_used;
-  }
+        return left_used & right_used;
+    }
 
-  /*
-  Conversion from node index in binary tree to pointer to memory.
-  */
-  uint8 *
-  node_to_ptr (size_t node_idx, size_t bucket_idx)
-  {
-    uint64 index_in_bucket = node_idx - (1 << bucket_idx) + 1;
-    return base_ptr + index_in_bucket * BUCKET_SIZE_FOR_INDEX (node_idx);
-  }
+    /*
+    Conversion from node index in binary tree to pointer to memory.
+    */
+    uint8 *
+    node_to_ptr(size_t node_idx, size_t bucket_idx)
+    {
+        // TODO: understand and refactor
+        return base_ptr + ((node_idx - (1 << bucket_idx) + 1) << (MAX_ALLOC_SIZE_SHIFT - bucket_idx));
+    }
 
-  /*
- Conversion from pointer in memory to correct node index in the binary tree.
- Also needs the desired bucket to find the node index
-  */
-  size_t
-  ptr_to_node (uint8 *ptr, size_t bucket_idx)
-  {
-    size_t offset = (ptr - base_ptr);
-    // index "offset" in current bucket
-    size_t local_idx = offset / (BUCKET_SIZE_FOR_INDEX (bucket_idx));
-    return ((1 << bucket_idx) - 1) + local_idx;
-  }
+    /*
+   Conversion from pointer in memory to correct node index in the binary tree.
+   Also needs the desired bucket to find the node index
+    */
+    size_t
+    ptr_to_node(uint8 *ptr, size_t bucket_idx)
+    {
+        size_t offset = (ptr - base_ptr);
+        // index "offset" in current bucket
+        size_t local_idx = offset / (BUCKET_SIZE_FOR_INDEX(bucket_idx));
+        return ((1 << bucket_idx) - 1) + local_idx;
+    }
 
-  /*
-  Determines the ideal bucket for the requested allocation size.
-  */
-  size_t
-  bucket_for_alloc_size (size_t alloc_size)
-  {
-    size_t bucket = BUCKET_AMOUNT - 1;
-    size_t bucket_size = MIN_ALLOC_SIZE;
+    /*
+    Determines the ideal bucket for the requested allocation size.
+    */
+    size_t
+    bucket_for_alloc_size(size_t alloc_size)
+    {
+        size_t bucket = BUCKET_AMOUNT - 1;
+        size_t bucket_size = MIN_ALLOC_SIZE;
 
-    while (bucket_size < alloc_size)
-      {
-        if (bucket == 0)
-          return -1;
-        bucket_size *= 2;
-        bucket--;
-      }
+        while (bucket_size < alloc_size)
+        {
+            if (bucket == 0)
+                return -1;
+            bucket_size *= 2;
+            bucket--;
+        }
 
-    return bucket;
-  }
+        return bucket;
+    }
 
-  /*
-  Ask the OS to grow memory up to specific pointer location.
-  */
-  int
-  grow_heap_upto (uint8 *limit)
-  {
-    printf("GROW_HEAP_UPTO call with new limit %p\n", limit);
-    if (limit <= max_ptr)
-      return -1;
-    
-    char *old = sbrk (limit - max_ptr);
-    if (!old)
-      return -1;
+    /*
+    Ask the OS to grow memory up to specific pointer location.
+    */
+    int
+    grow_heap_upto(uint8 *limit)
+    {
+        // printf("GROW_HEAP_UPTO call with new limit %p\n", limit);
+        if (limit <= max_ptr)
+            return -1;
 
-    printf("Allocated from in grow_heap_upto: %p to %p\n\n", old, limit);
+        char *old = sbrk(limit - max_ptr);
+        if (!old)
+            return -1;
 
-    max_ptr = limit;
-    return 0;
-  }
+        // printf("Allocated from in grow_heap_upto: %p to %p\n\n", old, limit);
 
-  /*
-  Attempts to grow binary tree. Two options:
-  1.  Both children are empty -> grow and merge and insert parent into freelist
-  2.  Left child has memory allocated -> grow and only insert right child into
-  freelist
+        max_ptr = limit;
+        return 0;
+    }
 
-  CALLER HAS TO VERIFY VALIDITY OF PARAMETER "rank"
-  */
-  int
-  grow_tree_upto (size_t rank)
-  {
-    printf("GROW_TREE_UPTO: call for rank %d\n", rank);
-    if (rank < 0)
-      return -1;
+    /*
+    Attempts to grow binary tree. Two options:
+    1.  Both children are empty -> grow and merge and insert parent into freelist
+    2.  Left child has memory allocated -> grow and only insert right child into
+    freelist
 
-    // Root is always at base pointer
-    size_t root = ptr_to_node (base_ptr, root_bucket_index);
-    size_t parent = GET_PARENT (root);
+    CALLER HAS TO VERIFY VALIDITY OF PARAMETER "rank"
+    */
+    int
+    grow_tree_upto(size_t rank)
+    {
+        // printf("GROW_TREE_UPTO: call for rank %d\n", rank);
+        if (rank < 0)
+            return -1;
 
-    // OPTION 1: Both children are empty:
-    if (!buddy_node_get_bit (parent, LEFT_CHILD_USED))
-      {
-        // Increase size every time and add to parents freelist until we are at
-        // desired rank
-        while (root_bucket_index > rank)
-          {
-            // Parent has its right child used bit initialized to 0. No need to
-            // set roots brother to unused
+        // Root is always at base pointer
+        size_t root = ptr_to_node(base_ptr, root_bucket_index);
+        size_t parent = GET_PARENT(root);
 
-            // Since root unused, it is only entry in highest rank of freelist.
-            // We can safely pop here
-            free_list_pop (buckets[root_bucket_index]);
+        // OPTION 1: Both children are empty:
+        if (!buddy_node_get_bit(parent, LEFT_CHILD_USED))
+        {
+            // printf("children unused\n");
+            //  Increase size every time and add to parents freelist until we are at
+            //  desired rank
+            while (root_bucket_index > rank)
+            {
+                // Parent has its right child used bit initialized to 0. No need to
+                // set roots brother to unused
 
-            // New root index is now one smaller.
-            root_bucket_index--;
+                // Since root unused, it is only entry in highest rank of freelist.
+                // We can safely pop here
+                free_list_pop(buckets[root_bucket_index]);
 
-            // Insert new freelist entry to parent
-            free_list_init (buckets[root_bucket_index]);
-            free_list_push (buckets[root_bucket_index],
-                            (free_list_t *)base_ptr);
+                // New root index is now one smaller.
+                root_bucket_index--;
 
-            // Get new values for root and parent
-            root = ptr_to_node (base_ptr, root_bucket_index);
-            parent = GET_PARENT (root);
-          }
+                // Insert new freelist entry to parent
+                free_list_init(buckets[root_bucket_index]);
+                free_list_push(buckets[root_bucket_index],
+                               (free_list_t *)base_ptr);
+
+                // Get new values for root and parent
+                root = ptr_to_node(base_ptr, root_bucket_index);
+                parent = GET_PARENT(root);
+            }
+
+            return 0;
+        }
+
+        // OPTION 2: Root is used! We can't merge and only insert right child
+        else
+        {
+            // printf("left child used\n");
+            while (root_bucket_index > rank)
+            {
+                uint8 *right_buddy = node_to_ptr(GET_BUDDY(root), root_bucket_index);
+                // printf("right buddy ptr = %p\n", right_buddy);
+                if (grow_heap_upto(right_buddy + sizeof(free_list_t)) < 0)
+                    return -1;
+
+                free_list_push(buckets[root_bucket_index], (free_list_t *)right_buddy);
+
+                root_bucket_index--;
+
+                free_list_init(buckets[root_bucket_index]);
+
+                root = ptr_to_node(base_ptr, root_bucket_index);
+                parent = GET_PARENT(root);
+
+                // Set in parent, that (old) root is currently used
+                if (root != 0)
+                {
+                    buddy_node_flip_bit(parent, LEFT_CHILD_USED);
+                }
+            }
+        }
+        // Check if parent has children, that are used (aka us :D)
 
         return 0;
-      }
+    }
 
-    // OPTION 2: Root is used! We can't merge and only insert right child
-    else
-      {
-        while (root_bucket_index > rank)
-          {
-            uint8 *right_buddy
-                = node_to_ptr (GET_BUDDY (root), root_bucket_index);
-            if (!grow_heap_upto (right_buddy + sizeof (free_list_t)))
-              return -1;
+    void *
+    malloc(uint size)
+    {
+        // printf("Got malloc request for %d or 0x%x\n", size, size);
 
-            free_list_t *right_buddy_list = (free_list_t *)right_buddy;
-            free_list_push (buckets[root_bucket_index], right_buddy_list);
+        if (size + HEADER_SIZE > MAX_ALLOC_SIZE)
+            return NULL;
 
-            root_bucket_index--;
+        // If base pointer is NULL, this is the first call to malloc and the
+        // initial memory chunk must be claimed and added to freelist
+        if (!base_ptr)
+        {
+            // Use cheese to find initial base pointer and set max_ptr to same
+            // value
+            base_ptr = (uint8 *)sbrk(0);
+            max_ptr = base_ptr;
 
-            root = ptr_to_node (base_ptr, root_bucket_index);
-            parent = GET_PARENT (root);
+            root_bucket_index = BUCKET_AMOUNT - 1;
 
-            // Set in parent, that (old) root is currently used
-            if (root != 0)
-              {
-                buddy_node_flip_bit (parent, LEFT_CHILD_USED);
-              }
-          }
-      }
-    // Check if parent has children, that are used (aka us :D)
+            // printf("Setting up at base: %p\n", base_ptr);
+            grow_heap_upto(base_ptr + sizeof(free_list_t));
+            // printf("After heap grow: base %p, max %p\n", base_ptr, max_ptr);
 
-    return 0;
-  }
+            free_list_init(buckets[root_bucket_index]);
+            free_list_push(buckets[root_bucket_index], (free_list_t *)base_ptr);
 
-  void *
-  malloc (uint size)
-  {
+            // printf("Finished init by pushing block of size %d\n", BUCKET_SIZE_FOR_INDEX(root_bucket_index));
+        }
 
-    printf("Got malloc request for %d or 0x%x\n", size, size);
+        // Find ideal bucket to fit our allocation, DON'T FORGET THAT HEADER!
+        ssize_t ideal_bucket = bucket_for_alloc_size(size + HEADER_SIZE);
 
-    if (size + HEADER_SIZE > MAX_ALLOC_SIZE)
-      return NULL;
+        // Make sure that we have at least tree for ideal bucket
+        if (grow_tree_upto(ideal_bucket) != 0)
+            return NULL;
 
-    // If base pointer is NULL, this is the first call to malloc and the
-    // initial memory chunk must be claimed and added to freelist
-    if (!base_ptr)
-      {
-        // Use cheese to find initial base pointer and set max_ptr to same
-        // value
-        base_ptr = (uint8 *)sbrk (0);
-        max_ptr = base_ptr;
+        // printf("Tree grown, max is: %d\n", root_bucket_index);
 
-        root_bucket_index = BUCKET_AMOUNT - 1;
+        // Early out, if bucket with ideal size has elements
+        // Write allocated size into header
+        uint8 *please = (uint8 *)free_list_pop(buckets[ideal_bucket]);
 
-        printf("Setting up at base: %p\n", base_ptr);
-        grow_heap_upto (base_ptr + sizeof (free_list_t));
-        printf("After heap grow: base %p, max %p\n", base_ptr, max_ptr);
+        // printf("Trying to use bucket of size %d at %p\n", BUCKET_SIZE_FOR_INDEX(ideal_bucket), please);
 
-        free_list_init (buckets[root_bucket_index]);
-        free_list_push (buckets[root_bucket_index], (free_list_t *)base_ptr);
-
-        printf("Finished init by pushing block of size %d\n", BUCKET_SIZE_FOR_INDEX(root_bucket_index));
-      }
-
-    // Find ideal bucket to fit our allocation, DON'T FORGET THAT HEADER!
-    size_t ideal_bucket = bucket_for_alloc_size (size + HEADER_SIZE);
-
-    // Make sure that we have at least tree for ideal bucket
-    grow_tree_upto (ideal_bucket);
-    printf("Tree grown, max is: %d\n", root_bucket_index);
-
-    // Early out, if bucket with ideal size has elements
-    // Write allocated size into header
-    uint8 *please = (uint8 *)free_list_pop (buckets[ideal_bucket]);
-
-    printf("Trying to use bucket of size %d at %p\n", BUCKET_SIZE_FOR_INDEX(ideal_bucket), please);
-
-    if (please != NULL)
-      {
-        printf("Found ideally sized bucket at %p!\n\n", please + HEADER_SIZE);
-        *((size_t *)please) = size;
-        return please + HEADER_SIZE;
-      }
-
-    // Now we aren't happy anymore
-    // Find free bucket
-    size_t current_bucket = ideal_bucket - 1;
-    while (current_bucket >= 0)
-      {
-        grow_tree_upto (current_bucket);
-
-        please = (uint8 *)free_list_pop (buckets[current_bucket]);
-
-        // Get out if we found a bucket!
         if (please != NULL)
-          break;
+        {
+            grow_heap_upto(please + BUCKET_SIZE_FOR_INDEX(ideal_bucket));
+            size_t node = ptr_to_node(please, ideal_bucket);
+            uint8 bitmask = node % 2 == 0 ? RIGHT_CHILD_USED : LEFT_CHILD_USED;
+            buddy_node_flip_bit(GET_PARENT(node), bitmask);
+            // printf("Found ideally sized bucket at %p!\n\n", please + HEADER_SIZE);
+            *((size_t *)please) = size;
+            return please + HEADER_SIZE;
+        }
 
-        current_bucket--;
-      }
+        // Now we aren't happy anymore
+        // Find free bucket
+        // current bucket is the bucket in which the please block is found (hopefully)
+        ssize_t current_bucket = ideal_bucket;
+        // printf("%d\n", sizeof(ssize_t));
+        while (current_bucket >= 0)
+        {
+            // printf("current bucket %d\n", current_bucket);
+            if (grow_tree_upto(current_bucket) != 0)
+            {
+                printf("aua\n");
+                return NULL;
+            }
 
-    // Not enough memory for allocation :(
-    if (current_bucket < 0 || please == NULL)
-      {
-        printf ("Not enough memory\n");
-        return NULL;
-      }
+            please = (uint8 *)free_list_pop(buckets[current_bucket]);
 
-    printf("Found free bucket at index %d\n", current_bucket);
+            // Get out if we found a bucket!
+            if (please != NULL)
+            {
+                printf("null\n");
+                break;
+            }
 
-    // Make sure, that there is enough space for at least the list entry of
-    // current_bucket right child, as he will be added to the free list, while
-    // we continue down the left children
-    grow_heap_upto (please + BUCKET_SIZE_FOR_INDEX (current_bucket + 1)
-                    + sizeof (free_list_t));
+            if (current_bucket == 0 || current_bucket > (ssize_t)root_bucket_index) {
+                current_bucket--;
+                printf("333\n");
+                continue;
+            }
+            printf("161\n");
 
-    printf("Allocated new space upto %p\n", max_ptr);
+            if (grow_tree_upto(current_bucket - 1) != 0)
+                return NULL;
 
-    // Now split larger bucket until we small space
-    while (current_bucket < ideal_bucket)
-      {
-        size_t big_block_idx = ptr_to_node (please, current_bucket);
+            please = (uint8 *)free_list_pop(buckets[current_bucket]);
+            break;
+        }
 
-        buddy_node_flip_bit (big_block_idx, LEFT_CHILD_USED);
+        // Not enough memory for allocation :(
+        if (current_bucket < 0 || please == NULL)
+        {
+            printf("Not enough memory\n");
+            return NULL;
+        }
 
-        // Halve bucket size
-        current_bucket++;
+        // printf("Found free bucket at index %d\n", current_bucket);
 
-        uint8 *right_child
-            = node_to_ptr (GET_RIGHT_CHILD (big_block_idx), current_bucket);
+        // Make sure, that there is enough space for at least the list entry of
+        // current_bucket right child, as he will be added to the free list, while
+        // we continue down the left children
+        grow_heap_upto(please + BUCKET_SIZE_FOR_INDEX(current_bucket + 1) + sizeof(free_list_t));
 
-        free_list_push (buckets[current_bucket], (free_list_t *)right_child);
-      }
+        // printf("Allocated new space upto %p\n", max_ptr);
 
-    // Found block, write size and return correct adress, offset by header
-    *((size_t *)please) = size;
-    printf("Finished malloc: Returning %p", please + HEADER_SIZE);
+        // Now split larger bucket until we small space
+        while (current_bucket < ideal_bucket)
+        {
+            size_t big_block_idx = ptr_to_node(please, current_bucket);
 
-    return please + HEADER_SIZE;
-  }
+            buddy_node_flip_bit(big_block_idx, LEFT_CHILD_USED);
 
-  void
-  free (void *ptr_to_free)
-  {
-    printf("Calling free for %p\n", ptr_to_free);
-    uint8 *ptr = (uint8 *)ptr_to_free;
-    // Get header content
-    uint64 alloc_size = *((uint64 *)(ptr - HEADER_SIZE));
+            // Halve bucket size
+            current_bucket++;
 
-    // Find alloced bucket size
-    size_t bucket = bucket_for_alloc_size (alloc_size + HEADER_SIZE);
-    size_t node_idx = ptr_to_node (ptr, bucket);
+            uint8 *right_child = node_to_ptr(GET_RIGHT_CHILD(big_block_idx), current_bucket);
 
-    printf("Determinded to free bucket as %d\n", bucket);
+            free_list_push(buckets[current_bucket], (free_list_t *)right_child);
+        }
 
-    while (bucket > root_bucket_index)
-      {
-        size_t parent = GET_PARENT (node_idx);
-        printf("Going to parent %d for merge\n", parent);
+        // Found block, write size and return correct adress, offset by header
+        *((size_t *)please) = (size_t)size;
+        // printf("Finished malloc: Returning %p", please + HEADER_SIZE);
 
-        // Check if we are left or right child based on our index
-        uint8 bitmask = node_idx % 2 == 0 ? RIGHT_CHILD_USED : LEFT_CHILD_USED;
+        return please + HEADER_SIZE;
+    }
 
-        printf("We are %d child\n", node_idx % 2);
+    void
+    free(void *ptr_to_free)
+    {
+        // printf("Calling free for %p\n", ptr_to_free);
+        uint8 *ptr = (uint8 *)ptr_to_free;
+        // Get header content
+        uint64 alloc_size = *((uint64 *)(ptr - HEADER_SIZE));
 
-        buddy_node_flip_bit (parent, bitmask);
+        // Find alloced bucket size
+        size_t bucket = bucket_for_alloc_size(alloc_size + HEADER_SIZE);
+        size_t node_idx = ptr_to_node(ptr, bucket);
 
-        // we are unused, so if buddy is used then we cannot merge and are done
-        if (buddy_node_exactly_one_child_used (node_idx))
-          {
-            free_list_push (buckets[bucket],
-                            (free_list_t *)node_to_ptr (node_idx, bucket));
-            printf("Buddy is used, pushing %p!!!!\n", node_to_ptr(node_idx, bucket));
-            return;
-          }
+        // printf("Determinded to free bucket as %d\n", bucket);
 
-        // Remove our now CONFIRMED free buddy from the freelist, as we are
-        // merging our blocks.
-        // Merged block will then be inserted into larger bucket later
-        free_list_remove (
-            *(free_list_t *)node_to_ptr (GET_BUDDY (node_idx), bucket));
+        while (bucket > root_bucket_index)
+        {
+            size_t parent = GET_PARENT(node_idx);
+            // printf("Going to parent %d for merge\n", parent);
 
-        printf("Removing our buddy at bucket %d because we are both free is free\n", bucket);
+            // Check if we are left or right child based on our index
+            uint8 bitmask = node_idx % 2 == 0 ? RIGHT_CHILD_USED : LEFT_CHILD_USED;
 
-        bucket--;
-        node_idx = parent;
-      }
-    free_list_push (buckets[bucket],
-                    (free_list_t *)node_to_ptr (node_idx, bucket));
-    printf("Finished free call and pushed %p at bucket %d\n", node_to_ptr(node_idx, bucket), bucket);
-  }
+            // printf("We are %d child\n", node_idx % 2);
+
+            buddy_node_flip_bit(parent, bitmask);
+
+            // we are unused, so if buddy is used then we cannot merge and are done
+            if (buddy_node_exactly_one_child_used(node_idx))
+            {
+                free_list_push(buckets[bucket],
+                               (free_list_t *)node_to_ptr(node_idx, bucket));
+                // printf("Buddy is used, pushing %p!!!!\n", node_to_ptr(node_idx, bucket));
+                return;
+            }
+
+            // Remove our now CONFIRMED free buddy from the freelist, as we are
+            // merging our blocks.
+            // Merged block will then be inserted into larger bucket later
+            free_list_remove(
+                *(free_list_t *)node_to_ptr(GET_BUDDY(node_idx), bucket));
+
+            // printf("Removing our buddy at bucket %d because we are both free is free\n", bucket);
+
+            bucket--;
+            node_idx = parent;
+        }
+        free_list_push(buckets[bucket],
+                       (free_list_t *)node_to_ptr(node_idx, bucket));
+        // printf("Finished free call and pushed %p at bucket %d\n", node_to_ptr(node_idx, bucket), bucket);
+    }
 
 #ifdef __cplusplus
 }
