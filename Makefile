@@ -151,7 +151,7 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_cxxtest\
-	$U/_my_malloc\
+	$U/_my_malloc_test\
 	$U/_malloc_test_cxx\
 
 fs.img: mkfs/mkfs README $(UPROGS)
