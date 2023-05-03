@@ -54,6 +54,16 @@ void test_balloc(void) {
     block_free(foo.untyped);
   }
   {
+    block foo = BALLOC(int, 5);
+    if(foo.begin) {
+      int *bar = static_cast<int*>(foo.begin);
+      int sum = bar[0] + bar[1];
+      (void) sum;
+      memset(foo.begin, 0, 20);
+    }
+    block_free(foo);
+  }
+  {
     auto foo = block_alloc_typed<char>(0);
     block_free(foo.untyped);
   }

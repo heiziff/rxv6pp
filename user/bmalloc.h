@@ -22,7 +22,11 @@ struct block {
 };
 typedef struct block block;
 
+#ifndef __cplusplus
 #define BALLOC(T,N) block_alloc(sizeof(T)*(N), _Alignof(T))
+#else
+#define BALLOC(T,N) block_alloc(sizeof(T)*(N), alignof(T))
+#endif
 
 block block_alloc(uint32_t size, uint32_t align);
 
