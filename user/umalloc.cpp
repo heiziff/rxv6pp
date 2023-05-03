@@ -319,6 +319,8 @@ extern "C"
     void *
     malloc(uint size)
     {
+        if (size == 0) return NULL;
+
         if (size + HEADER_SIZE > MAX_ALLOC_SIZE)
             return NULL;
 
@@ -427,6 +429,8 @@ extern "C"
     void
     free(void *ptr_to_free)
     {
+        if (ptr_to_free == NULL) return;
+        
         uint8 *ptr = (uint8 *)ptr_to_free;
         // Get header content
         uint64 alloc_size = *((uint64 *)(ptr - HEADER_SIZE));
