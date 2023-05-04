@@ -16,6 +16,9 @@ extern "C" {
 #include "kernel/stat.h"
 
 
+// start.c
+void            timerhalt(void);
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
