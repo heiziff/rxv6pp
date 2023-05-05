@@ -196,11 +196,10 @@ qemu-gdb: $K/kernel .gdbinit fs.img
 
 
 LANGUAGE_EXTENSION = c cpp cxx c++ cc
-COMPILETESTFOLDER = test
+COMPILETESTFOLDER = ct-test
 COMPILETEST = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER)/*.$(ext)))
 COMPILEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST))))
 #$(info $$(COMPILETEST) is $(COMPILETEST))
 #$(info $$(COMPILEOUT) is $(COMPILEOUT))
 
-test: $(COMPILEOUT)
-
+ct-test: $(COMPILEOUT)
