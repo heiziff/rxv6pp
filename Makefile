@@ -204,7 +204,6 @@ COMPILEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filt
 
 ct-test: $(COMPILEOUT)
 
-LANGUAGE_EXTENSION = c cpp cxx c++ cc
 RUNTIMETESTFOLDER = rt-test
 RUNTIMETEST = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(RUNTIMETESTFOLDER)/*.$(ext)))
 RUNTIMEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(RUNTIMETEST))))
