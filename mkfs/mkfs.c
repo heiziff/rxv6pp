@@ -128,13 +128,13 @@ main(int argc, char *argv[])
   iappend(rootino, &de, sizeof(de));
 
   for(i = 2; i < argc; i++){
-    // get rid of "user/"
+    // get rid of "folder names"
     char *shortname;
-    if(strncmp(argv[i], "user/", 5) == 0)
-      shortname = argv[i] + 5;
+    if ((shortname = strrchr(argv[i], '/')) != NULL)
+      shortname += 1; // get behind the /
     else
       shortname = argv[i];
-    
+
     assert(index(shortname, '/') == 0);
 
     if((fd = open(argv[i], 0)) < 0)
