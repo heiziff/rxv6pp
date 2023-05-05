@@ -203,3 +203,16 @@ COMPILEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filt
 #$(info $$(COMPILEOUT) is $(COMPILEOUT))
 
 ct-test: $(COMPILEOUT)
+
+LANGUAGE_EXTENSION = c cpp cxx c++ cc
+RUNTIMETESTFOLDER = rt-test
+RUNTIMETEST = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(RUNTIMETESTFOLDER)/*.$(ext)))
+RUNTIMEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(RUNTIMETEST))))
+RUNTIMEBIN = $(foreach object,$(filter %.o,$(RUNTIMEOUT)),$(dir $(object))_$(basename $(notdir $(object))))
+
+rt-test.img: mkfs/mkfs $(RUNTIMEBIN)
+	mkfs/mkfs rt-test.img $(RUNTIMEBIN)
+
+rt-test: $K/kernel rt-test.img
+	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-test.img,$(QEMUOPTS.drive))
+
