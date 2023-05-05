@@ -46,12 +46,11 @@ void test_balloc(void) {
   setup_balloc();
   {
     auto foo = block_alloc_typed<int>(20 / sizeof(int));
-    if(foo.typed.begin) {
-      int *bar = foo.typed.begin;
-      [[maybe_unused]] int sum = bar[0] + bar[1];
-      memset(foo.typed.begin, 0, 20);
+    if(foo.begin) {
+      [[maybe_unused]] int sum = foo.begin[0] + foo.begin[1];
+      memset(foo.begin, 0, 20);
     }
-    block_free(foo.untyped);
+    block_free(foo.untyped());
   }
   {
     block foo = BALLOC(int, 5);
@@ -65,7 +64,7 @@ void test_balloc(void) {
   }
   {
     auto foo = block_alloc_typed<char>(0);
-    block_free(foo.untyped);
+    block_free(foo.untyped());
   }
 }
 
