@@ -215,3 +215,14 @@ rt-test.img: mkfs/mkfs $(RUNTIMEBIN)
 rt-test: $K/kernel rt-test.img
 	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-test.img,$(QEMUOPTS.drive))
 
+BENCHMARKFOLDER = rt-bench
+BENCHMARK = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(BENCHMARKFOLDER)/*.$(ext)))
+BENCHMARKOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(BENCHMARK))))
+BENCHMARKBIN = $(foreach object,$(filter %.o,$(BENCHMARKOUT)),$(dir $(object))_$(basename $(notdir $(object))))
+
+rt-bench.img: mkfs/mkfs $(BENCHMARKBIN)
+	mkfs/mkfs rt-bench.img $(BENCHMARKBIN)
+
+rt-bench: $K/kernel rt-bench.img
+	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-bench.img,$(QEMUOPTS.drive))
+
