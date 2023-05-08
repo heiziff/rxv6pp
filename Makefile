@@ -167,6 +167,7 @@ clean:
 	$U/initcode $U/initcode.out $K/kernel fs.img rt-test.img rt-bench.img \
 	mkfs/mkfs .gdbinit \
         $U/usys.S \
+  $(RUNTIMETESTFOLDER)/_* $(BENCHMARKFOLDER)/_* \
 	$(UPROGS)
 
 # try to generate a unique GDB port
