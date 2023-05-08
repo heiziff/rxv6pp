@@ -1,6 +1,7 @@
 #include "user/user.h"
+#include "rt-test/assert.h"
 
 int main() {
 	printf("gonna crash!\n");
-	exit(1);
+	assert(false);
 }
