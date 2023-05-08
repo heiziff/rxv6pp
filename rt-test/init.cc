@@ -35,25 +35,25 @@ int main(void) {
   for (dirent entry; read(fd, &entry, sizeof(dirent)) == sizeof(dirent); ) {
     if(!entry.name[0]) continue;
     if (substring("test", entry.name)) {
-      printf("starting test [%s]\n", entry.name);
+      printf(">>>> starting test [%s]\n", entry.name);
       auto pid  = fork();
       if(pid < 0) exit(1);
       else if (pid == 0) {
         exec(entry.name, const_cast<char**>(argv));
-        printf("exit failed\n");
+        printf(">>>> exit failed\n");
         exit(1);
       }
       int retcode = 0;
       auto ret = wait(&retcode);
       if (ret != pid) exit(1); // we're not really init
       if (retcode)
-        printf("testcase [%s] failed with %d\n", entry.name, retcode);
+        printf(">>>> testcase [%s] failed with %d\n", entry.name, retcode);
       else
-        printf("testcase [%s] succeeded\n", entry.name, retcode);
+        printf(">>>> testcase [%s] succeeded\n", entry.name, retcode);
     }
   }
 
   // leads to a crash, but who really cares?
-  printf("finished tests, crashing now\n");
+  printf(">>>> finished tests, crashing now\n");
   exit(0);
 }
