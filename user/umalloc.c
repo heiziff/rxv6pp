@@ -21,6 +21,8 @@ static Header *freep;
 void
 free(void *ap)
 {
+  if (!ap) return;
+
   Header *bp, *p;
 
   bp = (Header*)ap - 1;
@@ -60,6 +62,8 @@ morecore(uint nu)
 void*
 malloc(uint nbytes)
 {
+  if (!nbytes) return 0;
+
   Header *p, *prevp;
   uint nunits;
 
