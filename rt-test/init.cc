@@ -33,13 +33,15 @@ int main(void) {
   int fd = open("/", O_RDONLY);
 
   for (dirent entry; read(fd, &entry, sizeof(dirent)) == sizeof(dirent); ) {
-    if(!entry.name[0]) continue;
-    if (substring("test", entry.name)) {
-      printf(">>>> starting test [%s]\n", entry.name);
+    char readbuffer[DIRSIZ + 1] = {};
+    memcpy(readbuffer, entry.name, DIRSIZ);
+    if(!readbuffer[0]) continue;
+    if (substring("test", readbuffer)) {
+      printf(">>>> starting test [%s]\n", readbuffer);
       auto pid  = fork();
       if(pid < 0) exit(1);
       else if (pid == 0) {
-        exec(entry.name, const_cast<char**>(argv));
+        exec(readbuffer, const_cast<char**>(argv));
         printf(">>>> exit failed\n");
         exit(1);
       }
@@ -47,9 +49,9 @@ int main(void) {
       auto ret = wait(&retcode);
       if (ret != pid) exit(1); // we're not really init
       if (retcode)
-        printf(">>>> testcase [%s] failed with %d\n", entry.name, retcode);
+        printf(">>>> testcase [%s] failed with %d\n", readbuffer, retcode);
       else
-        printf(">>>> testcase [%s] succeeded\n", entry.name, retcode);
+        printf(">>>> testcase [%s] succeeded\n", readbuffer, retcode);
     }
   }
 
