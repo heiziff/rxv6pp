@@ -227,3 +227,12 @@ rt-bench.img: mkfs/mkfs $(BENCHMARKBIN)
 rt-bench: $K/kernel rt-bench.img
 	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-bench.img,$(QEMUOPTS.drive))
 
+
+
+test : ct-test rt-test
+
+bench: rt-bench
+
+eval: test bench
+
+all: fs.img eval
