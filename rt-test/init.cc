@@ -38,8 +38,11 @@ int main(void) {
       printf("starting test [%s]\n", entry.name);
       auto pid  = fork();
       if(pid < 0) exit(1);
-      else if (pid == 0)
+      else if (pid == 0) {
         exec(entry.name, const_cast<char**>(argv));
+        printf("exit failed\n");
+        exit(1);
+      }
       int retcode = 0;
       auto ret = wait(&retcode);
       if (ret != pid) exit(1); // we're not really init
