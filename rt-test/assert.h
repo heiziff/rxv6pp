@@ -15,7 +15,7 @@ extern "C" {
 #define assert(assertion) \
 	do { \
 		if (!(assertion)) { \
-			printf("assertion [" #assertion "] failed on [%s@" __FILE__ ":%d]\n", __func__, __LINE__); \
+			printf("\033[4;31m" "assertion [" #assertion "] failed on [%s@" __FILE__ ":%d]\n" "\033[0m", __func__, __LINE__); \
 			exit(1); \
 		} \
 	} while(false)

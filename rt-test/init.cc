@@ -37,21 +37,21 @@ int main(void) {
     memcpy(readbuffer, entry.name, DIRSIZ);
     if(!readbuffer[0]) continue;
     if (substring("test", readbuffer)) {
-      printf(">>>> starting test [%s]\n", readbuffer);
+      printf("\033[;34m" ">>>> starting test [%s]\n" "\033[0m", readbuffer);
       auto pid  = fork();
       if(pid < 0) exit(1);
       else if (pid == 0) {
         exec(readbuffer, const_cast<char**>(argv));
-        printf(">>>> exit failed\n");
+        printf("\033[1;31m" ">>>> exit failed\n" "\033[0m");
         exit(1);
       }
       int retcode = 0;
       auto ret = wait(&retcode);
       if (ret != pid) exit(1); // we're not really init
       if (retcode)
-        printf(">>>> testcase [%s] failed with %d\n", readbuffer, retcode);
+        printf("\033[1;31m" ">>>> testcase [%s] failed with %d\n" "\033[0m", readbuffer, retcode);
       else
-        printf(">>>> testcase [%s] succeeded\n", readbuffer, retcode);
+        printf("\033[1;32m" ">>>> testcase [%s] succeeded\n" "\033[0m", readbuffer, retcode);
     }
   }
 
