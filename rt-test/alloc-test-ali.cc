@@ -22,11 +22,11 @@ void test_align(void *ptr, int alignment) {
 		assert((val & 7) == 0);
 		return;
 	}
-	assert((val & 15));
+	assert(!(val & 15));
 }
 
 void main() {
-	for(int i = 0; i < 16; ++i) {
+	for(int i = 1; i < 16; ++i) {
 		auto malloced = malloc(i);
 		assert(malloced);
 		test_align(malloced, i);
