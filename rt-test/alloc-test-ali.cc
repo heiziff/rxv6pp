@@ -42,7 +42,7 @@ void main() {
 		auto malloced = malloc(i);
 		assert(malloced);
 		test_align(malloced, 16);
-		free(malloced);		
+		free(malloced);
 
 		auto block1 = block_alloc(i, 16);
 		assert(block1.begin);
