@@ -40,8 +40,13 @@ int main(void) {
       if(pid < 0) exit(1);
       else if (pid == 0)
         exec(entry.name, const_cast<char**>(argv));
-      auto ret = wait(0);
+      int retcode = 0;
+      auto ret = wait(&retcode);
       if (ret != pid) exit(1); // we're not really init
+      if (retcode)
+        printf("testcase [%s] failed with %d\n", entry.name, retcode);
+      else
+        printf("testcase [%s] succeeded\n", entry.name, retcode);
     }
   }
 
