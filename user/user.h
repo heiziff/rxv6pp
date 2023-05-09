@@ -35,6 +35,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 void cxx(int);
+void term();
 
 // ulib.c
 int stat(const char*, struct stat*);

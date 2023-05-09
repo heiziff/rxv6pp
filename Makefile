@@ -29,7 +29,8 @@ OBJS = \
   $K/kernelvec.o \
   $K/plic.o \
   $K/virtio_disk.o  \
-  $K/cxxtest.o
+  $K/cxxtest.o \
+  $K/terminate.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -153,18 +154,20 @@ UPROGS=\
 	$U/_cxxtest\
 	$U/_my_malloc_test\
 	$U/_malloc_test_cxx\
+	$U/_terminate\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
 
--include kernel/*.d user/*.d
+-include kernel/*.d user/*.d ct-test/*.d rt-test/*.d
 
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
-	$U/initcode $U/initcode.out $K/kernel fs.img \
+	$U/initcode $U/initcode.out $K/kernel fs.img rt-test.img rt-bench.img \
 	mkfs/mkfs .gdbinit \
-        $U/usys.S \
+	$U/usys.S \
+	$(RUNTIMETESTFOLDER)/_* $(BENCHMARKFOLDER)/_* \
 	$(UPROGS)
 
 # try to generate a unique GDB port
@@ -179,26 +182,57 @@ endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
-QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+QEMUOPTS.drive = -drive file=fs.img,if=none,format=raw,id=x0
 
 qemu: $K/kernel fs.img
-	$(QEMU) $(QEMUOPTS)
+	$(QEMU) $(QEMUOPTS) $(QEMUOPTS.drive)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
 qemu-gdb: $K/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
-	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
+	$(QEMU) $(QEMUOPTS) $(QEMUOPTS.drive) -S $(QEMUGDB)
 
 
 LANGUAGE_EXTENSION = c cpp cxx c++ cc
-COMPILETESTFOLDER = test
+COMPILETESTFOLDER = ct-test
 COMPILETEST = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER)/*.$(ext)))
 COMPILEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST))))
 #$(info $$(COMPILETEST) is $(COMPILETEST))
 #$(info $$(COMPILEOUT) is $(COMPILEOUT))
 
-test: $(COMPILEOUT)
+ct-test: $(COMPILEOUT)
 
+RUNTIMETESTFOLDER = rt-test
+RUNTIMETEST = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(RUNTIMETESTFOLDER)/*.$(ext)))
+RUNTIMEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(RUNTIMETEST))))
+RUNTIMEBIN = $(foreach object,$(filter %.o,$(RUNTIMEOUT)),$(dir $(object))_$(basename $(notdir $(object))))
+
+rt-test.img: mkfs/mkfs $(RUNTIMEBIN)
+	mkfs/mkfs rt-test.img $(RUNTIMEBIN)
+
+rt-test: $K/kernel rt-test.img
+	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-test.img,$(QEMUOPTS.drive))
+
+BENCHMARKFOLDER = rt-bench
+BENCHMARK = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(BENCHMARKFOLDER)/*.$(ext)))
+BENCHMARKOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(BENCHMARK))))
+BENCHMARKBIN = $(foreach object,$(filter %.o,$(BENCHMARKOUT)),$(dir $(object))_$(basename $(notdir $(object))))
+
+rt-bench.img: mkfs/mkfs $(BENCHMARKBIN)
+	mkfs/mkfs rt-bench.img $(BENCHMARKBIN)
+
+rt-bench: $K/kernel rt-bench.img
+	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-bench.img,$(QEMUOPTS.drive))
+
+
+
+test : ct-test rt-test
+
+bench: rt-bench
+
+eval: test bench
+
+all: fs.img eval
