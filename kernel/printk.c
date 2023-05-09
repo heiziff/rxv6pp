@@ -135,7 +135,7 @@ panic(char *s)
 {
   pr.locking = 0;
   pr_emerg("panic: ");
-  printk(KERN_EMERG "%s", s); // The only place where a dynamic string is an argument of printk. Thanks
+  pr_emerg("%s", s);
   pr_emerg("\n");
   panicked = 1; // freeze uart output from other CPUs
   timerhalt();
