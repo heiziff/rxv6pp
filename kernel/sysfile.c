@@ -545,7 +545,7 @@ sys_mmap(void)
   // POSIX says, so I follow
   if (n_pages <= 0) return EINVAL;
   if (!(flags & MAP_PRIVATE)) return EINVAL;
-  // if (va_hint % PGSIZE != 0) return EINVAL;
+  if (va % PGSIZE != 0) return EINVAL;
 
   int perm = 0;
   perm |= PTE_U;
@@ -553,9 +553,26 @@ sys_mmap(void)
   if (prot & PROT_WRITE) perm |= PTE_W;
   if (prot & PROT_EXEC) perm |= PTE_X;
 
-  if (!(flags & MAP_FIXED) || va == 0) {
+  // we do not allow mmap to map fixed allocations into our buddy allocator
+  if (flags & MAP_FIXED && va < MMAP_VA_BEGIN) {
+    return MAP_FAILED;
+  }
+
+  // address hint points into buddy allocator region, search for another addr
+  if (!(flags & MAP_FIXED) || va == 0 || va < MMAP_VA_BEGIN) {
     va = mmap_find_space(p->pagetable, va, n_pages);
     if (va == -1) return MAP_FAILED;
+  }
+
+  // check if the requested mapping region contains any non-user mappings
+  if (flags & MAP_FIXED) {
+    for (int i = 0; i < n_pages; i++) {
+      if (walkaddr(p->pagetable, va + i*PGSIZE)) {
+        pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
+        if (!(*pte & PTE_U))
+          return MAP_FAILED;
+      }
+    }
   }
 
   // we now have a valid va to work with, allocate physical memory and 
@@ -572,7 +589,7 @@ sys_mmap(void)
     else if (flags & MAP_FIXED) {
       pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
       *pte = *pte & ~0x3FF;
-      *pte |= perm | PTE_V;
+      *pte |= perm | PTE_V | PTE_U;
     }
     // va already mapped and no MAP_FIXED => what is going on
     else {
@@ -580,6 +597,7 @@ sys_mmap(void)
     }
   }
 
+  // add the new mapping to proc struct
   taken_list *entry = p->mmaped_pages;
   while (entry->used) {
     entry++;
@@ -598,4 +616,30 @@ sys_mmap(void)
   entry->used = 1;
 
   return va;
+}
+
+int
+sys_munmap(void)
+{
+  uint64 addr;
+  int n_pages;
+
+  argaddr(0, &addr);
+  argint(1, &n_pages);
+
+  if (addr % PGSIZE != 0) return EINVAL;
+  if (addr < MMAP_VA_BEGIN || addr >= MMAP_VA_END - n_pages * PGSIZE) return EINVAL;
+
+  struct proc *p = myproc();
+
+  for (int i = 0; i < n_pages; i++) {
+    uint64 va = addr + i * PGSIZE;
+    if (walkaddr(p->pagetable, va)) {
+      pte_t *pte = walk(p->pagetable, va, 0);
+      if (*pte & PTE_U)
+        uvmunmap(p->pagetable, va, 1, 1);
+    }
+  }
+
+  return 0;
 }
