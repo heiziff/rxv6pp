@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 #include "kernel/stat.h"
+#include "kernel/mmap.h"
 
 
 // system calls
@@ -34,6 +35,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+void* mmap(void*, int, int, int);
 void cxx(int);
 void term();
 
