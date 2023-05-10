@@ -1,11 +1,12 @@
 K=kernel
 U=user
+O=own
 
 OBJS = \
   $K/entry.o \
   $K/start.o \
   $K/console.o \
-  $K/printf.o \
+  $K/printk.o \
   $K/uart.o \
   $K/kalloc.o \
   $K/spinlock.o \
@@ -18,6 +19,7 @@ OBJS = \
   $K/trap.o \
   $K/syscall.o \
   $K/sysproc.o \
+  $K/sysown.o \
   $K/bio.o \
   $K/fs.o \
   $K/log.o \
@@ -106,7 +108,7 @@ $U/initcode: $U/initcode.S
 tags: $(OBJS) _init
 	etags *.S *.c
 
-ULIB = $U/ulib.o $U/usys.o $U/printf.o $U/umalloc.o $U/bmalloc.o
+ULIB = $U/ulib.o $U/usys.o $U/printf.o $U/umalloc.o $U/bmalloc.o $U/user.o
 
 _%: %.o $(ULIB)
 	$(LD) $(LDFLAGS) -T $U/user.ld -o $@ $^
@@ -156,6 +158,10 @@ UPROGS=\
 	$U/_malloc_test_cxx\
 	$U/_terminate\
 	$U/_my_mmap\
+	$U/_hello\
+	$U/_hello_kernel\
+	$U/_test_printf\
+	$O/_test_own\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

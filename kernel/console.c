@@ -16,7 +16,7 @@
 
 //
 // send one character to the uart.
-// called by printf(), and to echo input characters,
+// called by printk(), and to echo input characters,
 // but not from write().
 //
 void

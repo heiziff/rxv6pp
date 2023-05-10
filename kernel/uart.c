@@ -40,7 +40,7 @@ char uart_tx_buf[UART_TX_BUF_SIZE];
 uint64 uart_tx_w; // write next to uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE]
 uint64 uart_tx_r; // read next from uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE]
 
-extern volatile int panicked; // from printf.c
+extern volatile int panicked; // from printk.c
 
 void uartstart();
 
@@ -100,7 +100,7 @@ uartputc(int c)
 
 
 // alternate version of uartputc() that doesn't 
-// use interrupts, for use by kernel printf() and
+// use interrupts, for use by kernel printk() and
 // to echo characters. it spins waiting for the uart's
 // output register to be empty.
 void

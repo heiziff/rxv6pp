@@ -664,7 +664,7 @@ procdump(void)
   struct proc *p;
   char *state;
 
-  printf("\n");
+  pr_info("\n");
   for(p = proc; p < &proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -672,7 +672,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printf("%d %s %s", p->pid, state, p->name);
-    printf("\n");
+    pr_info("%d %s %s", p->pid, state, p->name);
+    pr_info("\n");
   }
 }

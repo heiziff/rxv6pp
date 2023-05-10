@@ -98,6 +98,8 @@ extern uint64 sys_close(void);
 extern uint64 sys_cxx(void);
 extern uint64 sys_term(void);
 extern uint64 sys_mmap(void);
+extern uint64 sys_hello_kernel(void);
+extern uint64 sys_printPT(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -126,6 +128,9 @@ static uint64 (*syscalls[])(void) = {
 [SYS_mmap]    sys_mmap,
 [SYS_cxx]     sys_cxx,
 [SYS_term]    sys_term,
+[SYS_hello_kernel] sys_hello_kernel,
+[SYS_printPT]  sys_printPT,
+
 };
 
 void
@@ -140,7 +145,7 @@ syscall(void)
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
   } else {
-    printf("%d %s: unknown sys call %d\n",
+    pr_warning("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);
     p->trapframe->a0 = -1;
   }

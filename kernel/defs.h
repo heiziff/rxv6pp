@@ -15,7 +15,7 @@ extern "C" {
 #include "kernel/proc.h"
 #include "kernel/stat.h"
 #include "kernel/mmap.h"
-
+#include "kernel/printk.h"
 
 // start.c
 void            timerhalt(void);
@@ -87,10 +87,6 @@ void            pipeclose(struct pipe*, int);
 int             piperead(struct pipe*, uint64, int);
 int             pipewrite(struct pipe*, uint64, int);
 
-// printf.c
-void            printf(char*, ...);
-void            panic(char*) __attribute__((noreturn));
-void            printfinit(void);
 
 // proc.c
 int             cpuid(void);
@@ -184,6 +180,7 @@ uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
+uint64          print_pt(pagetable_t, int); // prints contents of a page
 
 // plic.c
 void            plicinit(void);

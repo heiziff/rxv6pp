@@ -1,5 +1,5 @@
 //
-// formatted console output -- printf, panic.
+// formatted kernel logging -- printk, panic.
 //
 
 #include <stdarg.h>
@@ -8,7 +8,7 @@
 
 volatile int panicked = 0;
 
-// lock to avoid interleaving concurrent printf's.
+// lock to avoid interleaving concurrent printk's.
 static struct {
   struct spinlock lock;
   int locking;
@@ -17,11 +17,11 @@ static struct {
 static char digits[] = "0123456789abcdef";
 
 static void
-printint(int xx, int base, int sign)
+printnum(long xx, int base, int sign)
 {
-  char buf[16];
-  int i;
-  uint x;
+  char buf[64]; // We can print up to 64 bit numbers in binary
+  long i;
+  uint64 x;
 
   if(sign && (sign = xx < 0))
     x = -xx;
@@ -50,9 +50,29 @@ printptr(uint64 x)
     consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
+void
+setoutputpriority(char level)
+{
+  const char* levelColorMap[] = {
+    [LOGLEVEL_EMERG]    "\e[38;5;196m",
+    [LOGLEVEL_WARNING]  "\e[38;5;172m",
+    [LOGLEVEL_NOTICE]   "\e[38;5;11m",
+    [LOGLEVEL_INFO]     "\e[38;5;240m",
+    [LOGLEVEL_DEFAULT]  "\e[0m",
+  };
+  
+  int colorIndex = ( KERN_EMERG[0] <= level && level <= KERN_DEFAULT[0]) ? level - 0x30 : LOGLEVEL_DEFAULT;
+
+  char c;
+  for (int i = 0; (c = levelColorMap[colorIndex][i] & 0xff) != 0; i++) {
+    consputc(c);
+  }
+
+}
+
 // Print to the console. only understands %d, %x, %p, %s.
 void
-printf(char *fmt, ...)
+printk(char *fmt, ...)
 {
   va_list ap;
   int i, c, locking;
@@ -62,11 +82,13 @@ printf(char *fmt, ...)
   if(locking)
     acquire(&pr.lock);
 
-  if (fmt == 0)
+  if (fmt == 0) 
     panic("null fmt");
 
+  setoutputpriority(fmt[0]);
+
   va_start(ap, fmt);
-  for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
+  for(i = 1; (c = fmt[i] & 0xff) != 0; i++){
     if(c != '%'){
       consputc(c);
       continue;
@@ -76,10 +98,10 @@ printf(char *fmt, ...)
       break;
     switch(c){
     case 'd':
-      printint(va_arg(ap, int), 10, 1);
+      printnum(va_arg(ap, int), 10, 1);
       break;
     case 'x':
-      printint(va_arg(ap, int), 16, 1);
+      printnum(va_arg(ap, int), 16, 1);
       break;
     case 'p':
       printptr(va_arg(ap, uint64));
@@ -102,6 +124,8 @@ printf(char *fmt, ...)
   }
   va_end(ap);
 
+  setoutputpriority(LOGLEVEL_DEFAULT);
+
   if(locking)
     release(&pr.lock);
 }
@@ -110,9 +134,9 @@ void
 panic(char *s)
 {
   pr.locking = 0;
-  printf("panic: ");
-  printf(s);
-  printf("\n");
+  pr_emerg("panic: ");
+  pr_emerg("%s", s);
+  pr_emerg("\n");
   panicked = 1; // freeze uart output from other CPUs
   timerhalt();
   for(;;)
@@ -120,7 +144,7 @@ panic(char *s)
 }
 
 void
-printfinit(void)
+printkinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
