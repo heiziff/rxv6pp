@@ -56,6 +56,6 @@ int main(void) {
   }
 
   // leads to a crash, but who really cares?
-  printf(">>>> finished tests, crashing now\n");
+  printf("\033[;34m" ">>>> finished tests, crashing now\n" "\033[0m");
   exit(0);
 }
