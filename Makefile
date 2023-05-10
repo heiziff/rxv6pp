@@ -155,6 +155,7 @@ UPROGS=\
 	$U/_my_malloc_test\
 	$U/_malloc_test_cxx\
 	$U/_terminate\
+	$U/_my_mmap\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
@@ -184,6 +185,7 @@ QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nogr
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 QEMUOPTS.drive = -drive file=fs.img,if=none,format=raw,id=x0
+# QEMUOPTS += -S -s 
 
 qemu: $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS) $(QEMUOPTS.drive)
