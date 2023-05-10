@@ -1,6 +1,7 @@
 /*!
  * \file
  * \brief page aligned allocations
+ * \attention optional test case
  */
 
 #include "rt-test/assert.h"
