@@ -509,10 +509,10 @@ sys_pipe(void)
 uint64
 mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages)
 {
-  if (begin <= MMAP_VA_BEGIN || begin >= (MAXVA - n_pages * PGSIZE))
+  if (begin <= MMAP_VA_BEGIN || begin >= (MMAP_VA_END - n_pages * PGSIZE))
     begin = MMAP_VA_BEGIN;
 
-  for (;begin < MAXVA; begin += PGSIZE) {
+  for (;begin < MMAP_VA_END; begin += PGSIZE) {
     int found = 1;
     for (int j = 0; j < n_pages; j++) {
       uint64 addr = walkaddr(pagetable, begin + (j * PGSIZE));
@@ -561,13 +561,41 @@ sys_mmap(void)
   // we now have a valid va to work with, allocate physical memory and 
   // map va's to it
   for (int i = 0; i < n_pages; i++) {
+    // va not mapped
     if (walkaddr(p->pagetable, va + i*PGSIZE) == 0) {
-        uint64 pa = (uint64) kalloc();
-        if (mappages(p->pagetable, va + i*PGSIZE, PGSIZE, pa, perm) < 0) {
-          panic("mmap");
-        }
+      uint64 pa = (uint64) kalloc();
+      if (mappages(p->pagetable, va + i*PGSIZE, PGSIZE, pa, perm) < 0) {
+        panic("mmap");
       }
+    }
+    // va already mapped and MAP_FIXED => update flags
+    else if (flags & MAP_FIXED) {
+      pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
+      *pte = *pte & ~0x3FF;
+      *pte |= perm | PTE_V;
+    }
+    // va already mapped and no MAP_FIXED => what is going on
+    else {
+      panic("mmap unexpected remap");
+    }
   }
+
+  taken_list *entry = p->mmaped_pages;
+  while (entry->used) {
+    entry++;
+    if ((uint64)entry % PGSIZE == 0) {
+      if ((entry - 1)->next == 0) {
+        (entry - 1)->next = kalloc();
+        memset((entry - 1)->next, 0, PGSIZE);
+      }
+      
+      entry = (entry - 1)->next;
+    }
+  }
+
+  entry->va = va;
+  entry->n_pages = n_pages;
+  entry->used = 1;
 
   return va;
 }

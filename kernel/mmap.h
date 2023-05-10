@@ -12,4 +12,11 @@
 #define MAP_POPULATE (1 << 2)
 #define MAP_FIXED    (1 << 3)
 
+typedef struct taken_list_s {
+  int used;
+  uint64 va;
+  size_t n_pages;
+  struct taken_list_s *next;
+} taken_list;
+
 #endif // _KERNEL_MMAP_H
