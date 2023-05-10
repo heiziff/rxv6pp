@@ -39,4 +39,5 @@ entry("uptime");
 entry("cxx");
 entry("term");
 entry("mmap")
+entry("printPT");
 

@@ -432,3 +432,47 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+/**
+ * Print an entire PT (lvl is the PTs level)
+*/
+uint64
+print_pt(pagetable_t pagetable, int lvl)
+{
+  if (lvl == 0) {
+    return 0;
+  }
+  union debugpte_t {
+    pte_t table;
+    struct {
+      union {
+        uint64 flags : 10;
+        struct {
+          uint64 valid : 1;
+          uint64 read : 1;
+          uint64 write : 1;
+          uint64 execute : 1;
+          uint64 user : 1;
+          uint64 unused : 5;
+        } bflags;
+      };
+      uint64 rest : 54;
+    } debug;
+  };
+
+  for (int i = 0; i < 512; i++) {
+    pte_t *pte = &pagetable[i];
+    if (*pte & PTE_V) {
+      union debugpte_t entry = {.table=pagetable[i]};
+      for (int i = 3; i >= lvl; i--) {
+        pr_notice("%d:", i);
+      }
+      pr_info("num:%d: %p, Flags: V:%d, R:%d, W:%d, X:%d, U:%d, \n", 
+      i, entry.table, entry.debug.bflags.valid, entry.debug.bflags.read, 
+      entry.debug.bflags.write, entry.debug.bflags.execute, entry.debug.bflags.user);
+      print_pt((pagetable_t)PTE2PA(*pte), lvl - 1);
+    }
+    
+  }
+  return 0;
+}
