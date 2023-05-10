@@ -1,6 +1,6 @@
 
-/*! \file user.h
- * \brief header for userspace standard library
+/*! \file assert.h
+ * \brief implement user space assertions
  */
 
 #ifndef INCLUDED_rt_test_assert_h
