@@ -23,8 +23,6 @@ extern "C"
 
 #define BUCKET_AMOUNT (MAX_ALLOC_SIZE_SHIFT - MIN_ALLOC_SIZE_SHIFT + 1)
 
-#define NULL nullptr
-
     /*
     Useful Macros for bucket calculations
     */

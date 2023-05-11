@@ -12,7 +12,7 @@ extern "C" {
 #include "kernel/stat.h"
 
 
-#define NULL ((void*)0)
+#define NULL nullptr
 #include "kernel/mmap.h"
 
 
