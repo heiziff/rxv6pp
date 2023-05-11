@@ -18,7 +18,7 @@
  */ 
 #define SCGETRETURN(rVal)    \
     asm volatile(            \
-        "sw a0, %0\n"        \
+        "sd a0, %0\n"        \
         :"=m"(rVal)          \
     )
 
@@ -28,12 +28,12 @@
 */
 #define SCSAVEARGS(arr)       \
     asm volatile(             \
-        "sw a0, (0)%0\n"      \
-        "sw a1, (8)%0\n"      \
-        "sw a2, (16)%0\n"     \
-        "sw a3, (24)%0\n"     \
-        "sw a4, (32)%0\n"     \
-        "sw a5, (40)%0\n"     \
+        "sd a0, (0)%0\n"      \
+        "sd a1, (8)%0\n"      \
+        "sd a2, (16)%0\n"     \
+        "sd a3, (24)%0\n"     \
+        "sd a4, (32)%0\n"     \
+        "sd a5, (40)%0\n"     \
         :"=o"(arr)            \
     )                        
 
@@ -42,19 +42,19 @@
 */
 #define SCRESTOREARGS(arr)    \
     asm volatile(             \
-        "lw a0, (0)%0\n"      \
-        "lw a1, (8)%0\n"      \
-        "lw a2, (16)%0\n"     \
-        "lw a3, (24)%0\n"     \
-        "lw a4, (32)%0\n"     \
-        "lw a5, (40)%0\n"     \
+        "ld a0, (0)%0\n"      \
+        "ld a1, (8)%0\n"      \
+        "ld a2, (16)%0\n"     \
+        "ld a3, (24)%0\n"     \
+        "ld a4, (32)%0\n"     \
+        "ld a5, (40)%0\n"     \
         :                     \
         :"o"(arr)             \
     )   
 
 void debugSCRegs(uint64 arr[6]) {
     for(int i = 0; i < 6; i++) {
-        printf("a%d:%ul\n",i,arr[i]);
+        printf("a%d:%p\n",i,arr[i]);
     }
 }
 
