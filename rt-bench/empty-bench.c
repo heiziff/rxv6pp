@@ -3,6 +3,6 @@
  * \file
  */
 
-int main() {
+void main() {
   // page intentionally left blank
 }
