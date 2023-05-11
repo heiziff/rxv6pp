@@ -20,7 +20,6 @@ void setup_balloc() {
 
 void setup_malloc() {
   printf("setup_malloc override called\n");
-
 }
 
 #endif
@@ -28,8 +27,8 @@ void setup_malloc() {
 void test_malloc(void) {
   setup_malloc();
   {
-    int *foo = static_cast<int*>(malloc(20));
-    if(foo) {
+    int *foo = static_cast<int *>(malloc(20));
+    if (foo) {
       [[maybe_unused]] int sum = foo[0] + foo[1];
       memset(foo, 0, 20);
     }
@@ -46,7 +45,7 @@ void test_balloc(void) {
   setup_balloc();
   {
     auto foo = block_alloc_typed<int>(20 / sizeof(int));
-    if(foo.begin) {
+    if (foo.begin) {
       [[maybe_unused]] int sum = foo.begin[0] + foo.begin[1];
       memset(foo.begin, 0, 20);
     }
@@ -54,10 +53,10 @@ void test_balloc(void) {
   }
   {
     block foo = BALLOC(int, 5);
-    if(foo.begin) {
-      int *bar = static_cast<int*>(foo.begin);
-      int sum = bar[0] + bar[1];
-      (void) sum;
+    if (foo.begin) {
+      int *bar = static_cast<int *>(foo.begin);
+      int sum  = bar[0] + bar[1];
+      (void)sum;
       memset(foo.begin, 0, 20);
     }
     block_free(foo);
@@ -70,7 +69,7 @@ void test_balloc(void) {
 
 void main(int argc, char **argv) {
   printf("start alloc, used [%s]\n", (argc > 1) ? "malloc" : "block");
-  if(argc > 1)
+  if (argc > 1)
     test_malloc();
   else
     test_balloc();

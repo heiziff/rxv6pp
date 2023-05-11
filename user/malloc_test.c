@@ -20,7 +20,6 @@ void setup_balloc() {
 
 void setup_malloc() {
   printf("setup_malloc override called\n");
-
 }
 
 #endif
@@ -29,9 +28,9 @@ void test_malloc(void) {
   setup_malloc();
   {
     int *foo = malloc(20);
-    if(foo) {
+    if (foo) {
       int sum = foo[0] + foo[1];
-      (void) sum;
+      (void)sum;
       memset(foo, 0, 20);
     }
     free(foo);
@@ -47,20 +46,20 @@ void test_balloc(void) {
   setup_balloc();
   {
     block foo = block_alloc(20, _Alignof(int));
-    if(foo.begin) {
+    if (foo.begin) {
       int *bar = foo.begin;
-      int sum = bar[0] + bar[1];
-      (void) sum;
+      int sum  = bar[0] + bar[1];
+      (void)sum;
       memset(foo.begin, 0, 20);
     }
     block_free(foo);
   }
   {
     block foo = BALLOC(int, 5);
-    if(foo.begin) {
+    if (foo.begin) {
       int *bar = foo.begin;
-      int sum = bar[0] + bar[1];
-      (void) sum;
+      int sum  = bar[0] + bar[1];
+      (void)sum;
       memset(foo.begin, 0, 20);
     }
     block_free(foo);
@@ -73,7 +72,7 @@ void test_balloc(void) {
 
 void main(int argc, char **argv) {
   printf("start alloc, used [%s]\n", (argc > 1) ? "malloc" : "block");
-  if(argc > 1)
+  if (argc > 1)
     test_malloc();
   else
     test_balloc();
