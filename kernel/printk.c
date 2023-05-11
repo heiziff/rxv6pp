@@ -58,6 +58,7 @@ setoutputpriority(char level)
     [LOGLEVEL_WARNING]  "\e[38;5;172m",
     [LOGLEVEL_NOTICE]   "\e[38;5;11m",
     [LOGLEVEL_INFO]     "\e[38;5;240m",
+    [LOGLEVEL_DEBUG]    "\e[38;5;45m",
     [LOGLEVEL_DEFAULT]  "\e[0m",
   };
   
