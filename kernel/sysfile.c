@@ -539,12 +539,14 @@ sys_mmap(void)
   argint(2, &prot);
   argint(3, &flags);
 
+  n_pages = (size + PGSIZE - 1) / PGSIZE;
+  va = PGROUNDDOWN(va);
+
   // POSIX says, so I follow
-  n_pages = size / PGSIZE;
   if (!(flags & MAP_PRIVATE)) return MAP_FAILED;
-  if (size % PGSIZE != 0) return MAP_FAILED;
   if (n_pages <= 0) return MAP_FAILED;
-  if (va % PGSIZE != 0) return MAP_FAILED;
+  if (!(flags & MAP_ANON)) return MAP_FAILED;
+  // if (va % PGSIZE != 0) return MAP_FAILED;
 
   int perm = 0;
   perm |= PTE_U;
@@ -553,7 +555,7 @@ sys_mmap(void)
   if (prot & PROT_EXEC) perm |= PTE_X;
 
   // we do not allow mmap to map fixed allocations into our buddy allocator
-  if ((flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) && va < MMAP_VA_BEGIN) {
+  if ((flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) && (va < MMAP_VA_BEGIN || va >= MMAP_VA_END - n_pages)) {
     return MAP_FAILED;
   }
 
@@ -561,7 +563,7 @@ sys_mmap(void)
   // i.e. when passing MAP_FIXED_NOREPLACE
 
   // address hint points into buddy allocator region, search for another addr
-  if (!(flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) || va == 0 || va < MMAP_VA_BEGIN) {
+  if (!(flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE)) {
     va = mmap_find_space(p->pagetable, va, n_pages);
     if (va == -1) return MAP_FAILED;
   }
