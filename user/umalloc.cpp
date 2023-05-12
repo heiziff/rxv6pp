@@ -332,6 +332,12 @@ extern "C"
             // Use cheese to find initial base pointer and set max_ptr to same
             // value
             base_ptr = (uint8 *)sbrk(0);
+            if ((uint64)(base_ptr + HEADER_SIZE) & (PAGE_SIZE - 1))
+            {
+                sbrk(PAGE_SIZE - ((uint64)base_ptr % PAGE_SIZE) - HEADER_SIZE);
+                base_ptr = (uint8 *)sbrk(0);
+            }
+
             max_ptr = base_ptr;
 
             root_bucket_index = BUCKET_AMOUNT - 1;
@@ -481,6 +487,9 @@ extern "C"
     {
         block b;
 
+        if (size == 0)
+            return b;
+
         // To ensure we have enough space for the aligned block allocation, we request the
         // maximum amount of memory needed to fit the allocation + alignment
         uint maximum_size_needed = size + align;
@@ -503,6 +512,9 @@ extern "C"
     void
     block_free(block b)
     {
+        if (b.begin == 0)
+            return;
+
         // figure out which bucket size was used for the allocation
         uint allocated_size = b.size + b.align;
         size_t bucket_idx = bucket_for_alloc_size(allocated_size + HEADER_SIZE);
