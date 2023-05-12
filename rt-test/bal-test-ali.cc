@@ -1,6 +1,6 @@
 /*!
  * \file
- * \brief test allocation alignments
+ * \brief test allocation alignments, using balloc
  */
 
 #include "rt-test/assert.h"
@@ -25,12 +25,8 @@ void test_align(void *ptr, int alignment) {
 }
 
 void main() {
+  setup_balloc();
   for (int i = 1; i < 16; ++i) {
-    auto malloced = malloc(i);
-    assert(malloced);
-    test_align(malloced, i);
-    free(malloced);
-
     auto block = block_alloc(i, i & 1 ? 1 : i & 2 ? 2 : i & 4 ? 4 : 8);
     assert(block.begin);
     test_align(block.begin, i);
@@ -38,11 +34,6 @@ void main() {
   }
 
   for (int i = 16; i < 4096; ++i) {
-    auto malloced = malloc(i);
-    assert(malloced);
-    test_align(malloced, 16);
-    free(malloced);
-
     auto block1 = block_alloc(i, 16);
     assert(block1.begin);
     test_align(block1.begin, 16);
