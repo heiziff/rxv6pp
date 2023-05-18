@@ -18,10 +18,10 @@ void main() {
   for (int i = 1; i <= 5; ++i) {
     auto bytes = 1 << i;
 
-    auto malloced = malloc(bytes);
-    assert(malloced);
-    test_write(malloced, i);
+    auto block = block_alloc(bytes, bytes < 16 ? bytes : 16);
+    assert(block.begin);
+    test_write(block.begin, i);
 
-    free(malloced);
+    block_free(block);
   }
 }
