@@ -29,6 +29,7 @@ void test_align(void *ptr, int alignment) {
 }
 
 void main() {
+  setup_balloc();
   for (int i = 1; i < 16; ++i) {
     auto block = block_alloc(i, i & 1 ? 1 : i & 2 ? 2 : i & 4 ? 4 : 8);
     assert(block.begin);

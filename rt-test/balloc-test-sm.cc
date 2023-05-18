@@ -15,6 +15,7 @@ void test_write(void *data, int bytes) {
 
 
 void main() {
+  setup_balloc();
   for (int i = 1; i <= 5; ++i) {
     auto bytes = 1 << i;
 

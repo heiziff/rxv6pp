@@ -7,6 +7,7 @@
 #include "user/bmalloc.h"
 
 void main() {
+  setup_malloc();
   auto malloced = malloc(0);
   assert(!malloced);
   free(malloced);

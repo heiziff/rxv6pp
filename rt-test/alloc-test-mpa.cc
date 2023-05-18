@@ -8,6 +8,7 @@
 #include "user/bmalloc.h"
 
 void main() {
+  setup_malloc();
   for (int i = 4096; i < 1 << 16; ++i) {
     void *ptr = malloc(i);
     assert(ptr);
