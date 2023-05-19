@@ -225,6 +225,7 @@ BENCHMARKBIN = $(foreach object,$(filter %.o,$(BENCHMARKOUT)),$(dir $(object))_$
 BENCHMARKEXEC = $(foreach benchmark,$(filter %bench,$(BENCHMARKBIN)),\
 	mkfs/mkfs rt-bench-individual.img rt-bench/_init $(benchmark); \
 	PATH=$(BENCHMARK_QEMU_FOLDER):$$PATH \
+		timeout -k 20s --foreground 1h \
 		$(QEMU) $(subst -smp 3,-smp 1,$(QEMUOPTS)) $(subst fs.img,rt-bench-individual.img,$(QEMUOPTS.drive)) $(BENCHMARK_QEMU_ADDITIONAL_OPTIONS) \
 		$(NEWLINE))
 
