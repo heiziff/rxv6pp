@@ -63,6 +63,8 @@ extern "C"
     void
     free_list_remove(free_list_t &element)
     {
+        if (element.prev == &element)
+            printf("PANIC, not allowed\n");
         element.prev->next = element.next;
         element.next->prev = element.prev;
     }
@@ -71,8 +73,11 @@ extern "C"
     free_list_pop(free_list_t &list)
     {
         if (list.prev == &list)
-            return (free_list_t*)NULL;
+            return (free_list_t *)NULL;
+
         free_list_t *last = list.prev;
+        if ((uint64)last < 0x100000)
+            printf("HÄ?\n");
         free_list_remove(*last);
 
         return last;
@@ -130,7 +135,11 @@ extern "C"
     void
     buddy_node_flip_bit(size_t idx, uint8 bitmask)
     {
+        int boolean = (buddy_nodes[idx].state & bitmask) != 0;
         buddy_nodes[idx].state ^= bitmask;
+        int boolean2 = (buddy_nodes[idx].state & bitmask) != 0;
+        if (boolean == boolean2)
+            printf("GA NIX GUT\n");
     }
 
     /*
@@ -143,7 +152,11 @@ extern "C"
         bool_t left_used = (node.state & LEFT_CHILD_USED) != 0;
         bool_t right_used = (node.state & RIGHT_CHILD_USED) != 0;
 
-        return left_used ^ right_used;
+        if (left_used)
+            return !right_used;
+        if (right_used)
+            return !left_used;
+        return 0;
     }
 
     /*
@@ -156,7 +169,7 @@ extern "C"
         bool_t left_used = (node.state & LEFT_CHILD_USED) != 0;
         bool_t right_used = (node.state & RIGHT_CHILD_USED) != 0;
 
-        return !(left_used & right_used);
+        return !left_used && !right_used;
     }
 
     /*
@@ -170,7 +183,7 @@ extern "C"
         bool_t left_used = (node.state & LEFT_CHILD_USED) != 0;
         bool_t right_used = (node.state & RIGHT_CHILD_USED) != 0;
 
-        return left_used & right_used;
+        return left_used && right_used;
     }
 
     /*
@@ -307,6 +320,7 @@ extern "C"
                 // Set in parent, that (old) root is currently used
                 if (root != 0)
                 {
+                    // TODO: do we really need to do this? isnt this already set for root?
                     buddy_node_flip_bit(parent, LEFT_CHILD_USED);
                 }
             }
@@ -348,10 +362,13 @@ extern "C"
 
             free_list_init(buckets[root_bucket_index]);
             free_list_push(buckets[root_bucket_index], (free_list_t *)base_ptr);
+            // printf("init prev %p next %p base %p\n", ((free_list_t *)base_ptr)->prev, ((free_list_t *)base_ptr)->next, ((free_list_t *)base_ptr));
         }
 
         // Find ideal bucket to fit our allocation, DON'T FORGET THAT HEADER!
         size_t ideal_bucket = bucket_for_alloc_size(size + HEADER_SIZE);
+        if (ideal_bucket + 1 == 0)
+            return NULL;
 
         // Make sure that we have at least tree for ideal bucket
         if (grow_tree_upto(ideal_bucket) != 0)
@@ -366,8 +383,9 @@ extern "C"
             grow_heap_upto(please + BUCKET_SIZE_FOR_INDEX(ideal_bucket));
             size_t node = ptr_to_node(please, ideal_bucket);
             uint8 bitmask = node % 2 == 0 ? RIGHT_CHILD_USED : LEFT_CHILD_USED;
-            buddy_node_flip_bit(GET_PARENT(node), bitmask);
-            *((size_t *)please) = size;
+            if (node != 0)
+                buddy_node_flip_bit(GET_PARENT(node), bitmask);
+            *((uint64 *)please) = size;
             return please + HEADER_SIZE;
         }
 
@@ -416,6 +434,7 @@ extern "C"
         grow_heap_upto(please + BUCKET_SIZE_FOR_INDEX(current_bucket + 1) + sizeof(free_list_t));
 
         // Now split larger bucket until we small space
+        // printf("grow from %d to %d\n", current_bucket, ideal_bucket);
         while (current_bucket < ideal_bucket)
         {
             size_t big_block_idx = ptr_to_node(please, current_bucket);
@@ -426,9 +445,10 @@ extern "C"
             current_bucket++;
 
             uint8 *right_child = node_to_ptr(GET_RIGHT_CHILD(big_block_idx), current_bucket);
-
+            // printf("  pushing right child at %d\n", current_bucket);
             free_list_push(buckets[current_bucket], (free_list_t *)right_child);
         }
+        // printf("done..\n");
 
         // Found block, write size and return correct adress, offset by header
         *((uint64 *)please) = (uint64)size;
@@ -443,12 +463,14 @@ extern "C"
             return;
 
         uint8 *ptr = (uint8 *)ptr_to_free;
+        uint8 *node_ptr = ptr - HEADER_SIZE;
         // Get header content
-        uint64 alloc_size = *((uint64 *)(ptr - HEADER_SIZE));
+        uint64 alloc_size = *((uint64 *)(node_ptr));
 
         // Find alloced bucket size
         size_t bucket = bucket_for_alloc_size(alloc_size + HEADER_SIZE);
-        size_t node_idx = ptr_to_node(ptr, bucket);
+
+        size_t node_idx = ptr_to_node(node_ptr, bucket);
 
         while (bucket > root_bucket_index)
         {
@@ -456,10 +478,11 @@ extern "C"
 
             // Check if we are left or right child based on our index
             uint8 bitmask = node_idx % 2 == 0 ? RIGHT_CHILD_USED : LEFT_CHILD_USED;
-            buddy_node_flip_bit(parent, bitmask);
+            if (node_idx != 0)
+                buddy_node_flip_bit(parent, bitmask);
 
             // we are unused, so if buddy is used then we cannot merge and are done
-            if (buddy_node_exactly_one_child_used(node_idx))
+            if (buddy_node_exactly_one_child_used(parent))
             {
                 free_list_push(buckets[bucket],
                                (free_list_t *)node_to_ptr(node_idx, bucket));
@@ -487,33 +510,41 @@ extern "C"
     block
     block_alloc(uint32_t size, uint32_t align)
     {
-        block b;
+        block b = {0};
 
         if (size == 0)
             return b;
 
         // To ensure we have enough space for the aligned block allocation, we request the
         // maximum amount of memory needed to fit the allocation + alignment
-        uint maximum_size_needed = size + align;
-        if (size >= 4070) printf("b1\n");
+        uint32_t maximum_size_needed = size + align;
+        // if (size >= 4070)
+        // printf("balloc call malloc with %d\n", maximum_size_needed);
         void *ptr = malloc(maximum_size_needed);
-        if (size >= 4070) printf("b2\n");
-
+        // if (size >= 4070)
+        // {
+        //     for (int i = 0; i < 1000; i++)
+        //     // printf("b2\n");
+        // }
 
         b.begin = ptr;
         b.size = size;
         b.align = align;
 
         uint64 adr = (uint64)ptr;
-        if (adr % align == 0) {
-            if (size >= 4070) printf("got block begin %p for alignment %d\n", b.begin, align);
+        if (adr % align == 0)
+        {
+            // if (size >= 4070) printf("got block begin %p for alignment %d\n", b.begin, align);
             return b;
         }
 
         // in case the bucket ptr is not already aligned to "align" we need to move the begin
         // of the block so it is aligned again.
+        if (align - (adr % align) < 0)
+            printf("OH OH!!!!\n");
         b.begin = (void *)(adr + align - (adr % align));
-        if (size >= 4070 && align == 8) printf("b3\n");
+        if (size >= 4070 && align == 8)
+            printf("b3\n");
 
         return b;
     }
@@ -527,6 +558,8 @@ extern "C"
         // figure out which bucket size was used for the allocation
         uint32 allocated_size = b.size + b.align;
         size_t bucket_idx = bucket_for_alloc_size(allocated_size + HEADER_SIZE);
+        if (bucket_idx + 1 == 0)
+            printf("panicc\n");
 
         // little hacky: we want to get from the begin ptr of the block to the begin of its
         // bucket. We can find the node index of the used bucket with the block begin ptr
