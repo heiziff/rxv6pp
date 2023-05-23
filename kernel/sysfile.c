@@ -6,6 +6,7 @@
 
 #include "defs.h"
 #include "fcntl.h"
+#include "buf.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -530,7 +531,7 @@ uint64
 sys_mmap(void)
 {
   uint64 va;
-  int size, n_pages, prot, flags;
+  int size, n_pages, prot, flags, fd, offset;
 
   struct proc *p = myproc();
 
@@ -538,6 +539,9 @@ sys_mmap(void)
   argint(1, &size);
   argint(2, &prot);
   argint(3, &flags);
+  argint(4, &fd);
+  argint(5, &offset);
+
 
   n_pages = (size + PGSIZE - 1) / PGSIZE;
   va = PGROUNDDOWN(va);
@@ -557,6 +561,48 @@ sys_mmap(void)
   // we do not allow mmap to map fixed allocations into our buddy allocator
   if ((flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) && (va < MMAP_VA_BEGIN || va >= MMAP_VA_END - n_pages)) {
     return MAP_FAILED;
+  }
+
+  // MMAP file stuff
+  if(fd > 0) {
+
+    struct file *f = p->ofile[fd];
+
+    if (f->type != FD_INODE){
+      panic("Help, no inode");
+      return 0;
+    }
+
+    struct inode *node = f->ip;
+
+    ilock(node);
+
+    if (node->size < size){
+      iunlock(node);
+      return 0;
+    }
+
+    struct buf *cur_buf;
+
+    int bytes_read = 0;
+
+    for(int b_index = offset / BSIZE; b_index < n_pages; b_index++){
+      uint disk_addr = bmap(node, b_index);
+      if(disk_addr == 0)
+        break;
+      cur_buf = bread(node->dev, disk_addr);
+
+      int n = size - bytes_read > BSIZE ? BSIZE : size - bytes_read;
+      if (b_index == 0) n-=offset % BSIZE;
+
+      // TODO: VA FINDUNG DAVOR MACHEN!
+      mappages(p->pagetable, va, n, cur_buf->data, perm);
+
+    }
+      
+    iunlock(f->ip);
+    //struct buf *buffer = bread(f->ip->dev, 0);
+
   }
 
   // TODO: maybe do all this with a process lock, to prevent whacky stuff
@@ -632,6 +678,8 @@ sys_mmap(void)
   entry->va = va;
   entry->n_pages = n_pages;
   entry->used = 1;
+
+  
 
   return va;
 }

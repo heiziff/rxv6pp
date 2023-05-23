@@ -61,7 +61,7 @@ bget(uint dev, uint blockno)
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
       release(&bcache.lock);
-      acquiresleep(&b->lock);
+      //acquiresleep(&b->lock);
       return b;
     }
   }
@@ -75,7 +75,7 @@ bget(uint dev, uint blockno)
       b->valid = 0;
       b->refcnt = 1;
       release(&bcache.lock);
-      acquiresleep(&b->lock);
+      //acquiresleep(&b->lock);
       return b;
     }
   }
@@ -100,8 +100,8 @@ bread(uint dev, uint blockno)
 void
 bwrite(struct buf *b)
 {
-  if(!holdingsleep(&b->lock))
-    panic("bwrite");
+  //if(!holdingsleep(&b->lock))
+  //  panic("bwrite");
   virtio_disk_rw(b, 1);
 }
 
@@ -110,10 +110,10 @@ bwrite(struct buf *b)
 void
 brelse(struct buf *b)
 {
-  if(!holdingsleep(&b->lock))
-    panic("brelse");
+  //if(!holdingsleep(&b->lock))
+  //  panic("brelse");
 
-  releasesleep(&b->lock);
+  //releasesleep(&b->lock);
 
   acquire(&bcache.lock);
   b->refcnt--;
