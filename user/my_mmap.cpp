@@ -2,7 +2,7 @@
 
 uint64 test(void* addr, int length, int prot, int flags) {
     printf("testing mmap at %p for size %d... ", addr, length);
-    uint64 va = (uint64) mmap(addr, length, prot, flags);
+    uint64 va = (uint64) mmap(addr, length, prot, flags, -1, 0);
     printf("got va %p\n", (void*)va);
     return va;
 }

@@ -8,7 +8,7 @@
 #include "user/user.h"
 
 void test(int prot) {
-    void *ptr = mmap(0, 4096, prot, MAP_PRIVATE | MAP_ANONYMOUS);
+    void *ptr = mmap(0, 4096, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     assert(ptr && ptr != (void*) MAP_FAILED);
     assert(!munmap(ptr, 4096));
 }
