@@ -10,32 +10,25 @@
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
-static int
-argfd(int n, int *pfd, struct file **pf)
-{
+static int argfd(int n, int *pfd, struct file **pf) {
   int fd;
   struct file *f;
 
   argint(n, &fd);
-  if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
-    return -1;
-  if(pfd)
-    *pfd = fd;
-  if(pf)
-    *pf = f;
+  if (fd < 0 || fd >= NOFILE || (f = myproc()->ofile[fd]) == 0) return -1;
+  if (pfd) *pfd = fd;
+  if (pf) *pf = f;
   return 0;
 }
 
 // Allocate a file descriptor for the given file.
 // Takes over file reference from caller on success.
-static int
-fdalloc(struct file *f)
-{
+static int fdalloc(struct file *f) {
   int fd;
   struct proc *p = myproc();
 
-  for(fd = 0; fd < NOFILE; fd++){
-    if(p->ofile[fd] == 0){
+  for (fd = 0; fd < NOFILE; fd++) {
+    if (p->ofile[fd] == 0) {
       p->ofile[fd] = f;
       return fd;
     }
@@ -43,92 +36,73 @@ fdalloc(struct file *f)
   return -1;
 }
 
-uint64
-sys_dup(void)
-{
+uint64 sys_dup(void) {
   struct file *f;
   int fd;
 
-  if(argfd(0, 0, &f) < 0)
-    return -1;
-  if((fd=fdalloc(f)) < 0)
-    return -1;
+  if (argfd(0, 0, &f) < 0) return -1;
+  if ((fd = fdalloc(f)) < 0) return -1;
   filedup(f);
   return fd;
 }
 
-uint64
-sys_read(void)
-{
+uint64 sys_read(void) {
   struct file *f;
   int n;
   uint64 p;
 
   argaddr(1, &p);
   argint(2, &n);
-  if(argfd(0, 0, &f) < 0)
-    return -1;
+  if (argfd(0, 0, &f) < 0) return -1;
   return fileread(f, p, n);
 }
 
-uint64
-sys_write(void)
-{
+uint64 sys_write(void) {
   struct file *f;
   int n;
   uint64 p;
-  
+
   argaddr(1, &p);
   argint(2, &n);
-  if(argfd(0, 0, &f) < 0)
-    return -1;
+  if (argfd(0, 0, &f) < 0) return -1;
 
   return filewrite(f, p, n);
 }
 
-uint64
-sys_close(void)
-{
+uint64 sys_close(void) {
   int fd;
   struct file *f;
 
-  if(argfd(0, &fd, &f) < 0)
-    return -1;
+  if (argfd(0, &fd, &f) < 0) return -1;
   myproc()->ofile[fd] = 0;
   fileclose(f);
   return 0;
 }
 
-uint64
-sys_fstat(void)
-{
+uint64 sys_fstat(void) {
   struct file *f;
   uint64 st; // user pointer to struct stat
 
   argaddr(1, &st);
-  if(argfd(0, 0, &f) < 0)
-    return -1;
+  if (argfd(0, 0, &f) < 0) return -1;
   return filestat(f, st);
 }
 
 // Create the path new as a link to the same inode as old.
-uint64
-sys_link(void)
-{
+uint64 sys_link(void) {
   char name[DIRSIZ], new[MAXPATH], old[MAXPATH];
   struct inode *dp, *ip;
 
-  if(argstr(0, old, MAXPATH) < 0 || argstr(1, new, MAXPATH) < 0)
-    return -1;
+  if (argstr(0, old, MAXPATH) < 0 || argstr(1, new, MAXPATH) < 0) return -1;
 
   begin_op();
-  if((ip = namei(old)) == 0){
+  if ((ip = namei(old)) == 0) {
     end_op();
     return -1;
   }
 
   ilock(ip);
-  if(ip->type == T_DIR){
+  if (ip->type == T_DIR) {
     iunlockput(ip);
     end_op();
     return -1;
@@ -138,10 +112,9 @@ sys_link(void)
   iupdate(ip);
   iunlock(ip);
 
-  if((dp = nameiparent(new, name)) == 0)
-    goto bad;
+  if ((dp = nameiparent(new, name)) == 0) goto bad;
   ilock(dp);
-  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
+  if (dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0) {
     iunlockput(dp);
     goto bad;
   }
@@ -162,34 +135,27 @@ bad:
 }
 
 // Is the directory dp empty except for "." and ".." ?
-static int
-isdirempty(struct inode *dp)
-{
+static int isdirempty(struct inode *dp) {
   int off;
   struct dirent de;
 
-  for(off=2*sizeof(de); off<dp->size; off+=sizeof(de)){
-    if(readi(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
-      panic("isdirempty: readi");
-    if(de.inum != 0)
-      return 0;
+  for (off = 2 * sizeof(de); off < dp->size; off += sizeof(de)) {
+    if (readi(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de)) panic("isdirempty: readi");
+    if (de.inum != 0) return 0;
   }
   return 1;
 }
 
-uint64
-sys_unlink(void)
-{
+uint64 sys_unlink(void) {
   struct inode *ip, *dp;
   struct dirent de;
   char name[DIRSIZ], path[MAXPATH];
   uint off;
 
-  if(argstr(0, path, MAXPATH) < 0)
-    return -1;
+  if (argstr(0, path, MAXPATH) < 0) return -1;
 
   begin_op();
-  if((dp = nameiparent(path, name)) == 0){
+  if ((dp = nameiparent(path, name)) == 0) {
     end_op();
     return -1;
   }
@@ -197,24 +163,20 @@ sys_unlink(void)
   ilock(dp);
 
   // Cannot unlink "." or "..".
-  if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
-    goto bad;
+  if (namecmp(name, ".") == 0 || namecmp(name, "..") == 0) goto bad;
 
-  if((ip = dirlookup(dp, name, &off)) == 0)
-    goto bad;
+  if ((ip = dirlookup(dp, name, &off)) == 0) goto bad;
   ilock(ip);
 
-  if(ip->nlink < 1)
-    panic("unlink: nlink < 1");
-  if(ip->type == T_DIR && !isdirempty(ip)){
+  if (ip->nlink < 1) panic("unlink: nlink < 1");
+  if (ip->type == T_DIR && !isdirempty(ip)) {
     iunlockput(ip);
     goto bad;
   }
 
   memset(&de, 0, sizeof(de));
-  if(writei(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
-    panic("unlink: writei");
-  if(ip->type == T_DIR){
+  if (writei(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de)) panic("unlink: writei");
+  if (ip->type == T_DIR) {
     dp->nlink--;
     iupdate(dp);
   }
@@ -234,27 +196,23 @@ bad:
   return -1;
 }
 
-static struct inode*
-create(char *path, short type, short major, short minor)
-{
+static struct inode *create(char *path, short type, short major, short minor) {
   struct inode *ip, *dp;
   char name[DIRSIZ];
 
-  if((dp = nameiparent(path, name)) == 0)
-    return 0;
+  if ((dp = nameiparent(path, name)) == 0) return 0;
 
   ilock(dp);
 
-  if((ip = dirlookup(dp, name, 0)) != 0){
+  if ((ip = dirlookup(dp, name, 0)) != 0) {
     iunlockput(dp);
     ilock(ip);
-    if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
-      return ip;
+    if (type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE)) return ip;
     iunlockput(ip);
     return 0;
   }
 
-  if((ip = ialloc(dp->dev, type)) == 0){
+  if ((ip = ialloc(dp->dev, type)) == 0) {
     iunlockput(dp);
     return 0;
   }
@@ -265,18 +223,16 @@ create(char *path, short type, short major, short minor)
   ip->nlink = 1;
   iupdate(ip);
 
-  if(type == T_DIR){  // Create . and .. entries.
+  if (type == T_DIR) { // Create . and .. entries.
     // No ip->nlink++ for ".": avoid cyclic ref count.
-    if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
-      goto fail;
+    if (dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0) goto fail;
   }
 
-  if(dirlink(dp, name, ip->inum) < 0)
-    goto fail;
+  if (dirlink(dp, name, ip->inum) < 0) goto fail;
 
-  if(type == T_DIR){
+  if (type == T_DIR) {
     // now that success is guaranteed:
-    dp->nlink++;  // for ".."
+    dp->nlink++; // for ".."
     iupdate(dp);
   }
 
@@ -284,7 +240,7 @@ create(char *path, short type, short major, short minor)
 
   return ip;
 
- fail:
+fail:
   // something went wrong. de-allocate ip.
   ip->nlink = 0;
   iupdate(ip);
@@ -293,9 +249,7 @@ create(char *path, short type, short major, short minor)
   return 0;
 }
 
-uint64
-sys_open(void)
-{
+uint64 sys_open(void) {
   char path[MAXPATH];
   int fd, omode;
   struct file *f;
@@ -303,58 +257,54 @@ sys_open(void)
   int n;
 
   argint(1, &omode);
-  if((n = argstr(0, path, MAXPATH)) < 0)
-    return -1;
+  if ((n = argstr(0, path, MAXPATH)) < 0) return -1;
 
   begin_op();
 
-  if(omode & O_CREATE){
+  if (omode & O_CREATE) {
     ip = create(path, T_FILE, 0, 0);
-    if(ip == 0){
+    if (ip == 0) {
       end_op();
       return -1;
     }
   } else {
-    if((ip = namei(path)) == 0){
+    if ((ip = namei(path)) == 0) {
       end_op();
       return -1;
     }
     ilock(ip);
-    if(ip->type == T_DIR && omode != O_RDONLY){
+    if (ip->type == T_DIR && omode != O_RDONLY) {
       iunlockput(ip);
       end_op();
       return -1;
     }
   }
 
-  if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
+  if (ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)) {
     iunlockput(ip);
     end_op();
     return -1;
   }
 
-  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
-    if(f)
-      fileclose(f);
+  if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
+    if (f) fileclose(f);
     iunlockput(ip);
     end_op();
     return -1;
   }
 
-  if(ip->type == T_DEVICE){
-    f->type = FD_DEVICE;
+  if (ip->type == T_DEVICE) {
+    f->type  = FD_DEVICE;
     f->major = ip->major;
   } else {
     f->type = FD_INODE;
-    f->off = 0;
+    f->off  = 0;
   }
-  f->ip = ip;
+  f->ip       = ip;
   f->readable = !(omode & O_WRONLY);
   f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
 
-  if((omode & O_TRUNC) && ip->type == T_FILE){
-    itrunc(ip);
-  }
+  if ((omode & O_TRUNC) && ip->type == T_FILE) { itrunc(ip); }
 
   iunlock(ip);
   end_op();
@@ -362,14 +312,12 @@ sys_open(void)
   return fd;
 }
 
-uint64
-sys_mkdir(void)
-{
+uint64 sys_mkdir(void) {
   char path[MAXPATH];
   struct inode *ip;
 
   begin_op();
-  if(argstr(0, path, MAXPATH) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0){
+  if (argstr(0, path, MAXPATH) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0) {
     end_op();
     return -1;
   }
@@ -378,9 +326,7 @@ sys_mkdir(void)
   return 0;
 }
 
-uint64
-sys_mknod(void)
-{
+uint64 sys_mknod(void) {
   struct inode *ip;
   char path[MAXPATH];
   int major, minor;
@@ -388,8 +334,7 @@ sys_mknod(void)
   begin_op();
   argint(1, &major);
   argint(2, &minor);
-  if((argstr(0, path, MAXPATH)) < 0 ||
-     (ip = create(path, T_DEVICE, major, minor)) == 0){
+  if ((argstr(0, path, MAXPATH)) < 0 || (ip = create(path, T_DEVICE, major, minor)) == 0) {
     end_op();
     return -1;
   }
@@ -398,20 +343,18 @@ sys_mknod(void)
   return 0;
 }
 
-uint64
-sys_chdir(void)
-{
+uint64 sys_chdir(void) {
   char path[MAXPATH];
   struct inode *ip;
   struct proc *p = myproc();
-  
+
   begin_op();
-  if(argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0){
+  if (argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0) {
     end_op();
     return -1;
   }
   ilock(ip);
-  if(ip->type != T_DIR){
+  if (ip->type != T_DIR) {
     iunlockput(ip);
     end_op();
     return -1;
@@ -423,70 +366,54 @@ sys_chdir(void)
   return 0;
 }
 
-uint64
-sys_exec(void)
-{
+uint64 sys_exec(void) {
   char path[MAXPATH], *argv[MAXARG];
   int i;
   uint64 uargv, uarg;
 
   argaddr(1, &uargv);
-  if(argstr(0, path, MAXPATH) < 0) {
-    return -1;
-  }
+  if (argstr(0, path, MAXPATH) < 0) { return -1; }
   memset(argv, 0, sizeof(argv));
-  for(i=0;; i++){
-    if(i >= NELEM(argv)){
-      goto bad;
-    }
-    if(fetchaddr(uargv+sizeof(uint64)*i, (uint64*)&uarg) < 0){
-      goto bad;
-    }
-    if(uarg == 0){
+  for (i = 0;; i++) {
+    if (i >= NELEM(argv)) { goto bad; }
+    if (fetchaddr(uargv + sizeof(uint64) * i, (uint64 *)&uarg) < 0) { goto bad; }
+    if (uarg == 0) {
       argv[i] = 0;
       break;
     }
     argv[i] = kalloc();
-    if(argv[i] == 0)
-      goto bad;
-    if(fetchstr(uarg, argv[i], PGSIZE) < 0)
-      goto bad;
+    if (argv[i] == 0) goto bad;
+    if (fetchstr(uarg, argv[i], PGSIZE) < 0) goto bad;
   }
 
   int ret = exec(path, argv);
 
-  for(i = 0; i < NELEM(argv) && argv[i] != 0; i++)
-    kfree(argv[i]);
+  for (i = 0; i < NELEM(argv) && argv[i] != 0; i++) kfree(argv[i]);
 
   return ret;
 
- bad:
-  for(i = 0; i < NELEM(argv) && argv[i] != 0; i++)
-    kfree(argv[i]);
+bad:
+  for (i = 0; i < NELEM(argv) && argv[i] != 0; i++) kfree(argv[i]);
   return -1;
 }
 
-uint64
-sys_pipe(void)
-{
+uint64 sys_pipe(void) {
   uint64 fdarray; // user pointer to array of two integers
   struct file *rf, *wf;
   int fd0, fd1;
   struct proc *p = myproc();
 
   argaddr(0, &fdarray);
-  if(pipealloc(&rf, &wf) < 0)
-    return -1;
+  if (pipealloc(&rf, &wf) < 0) return -1;
   fd0 = -1;
-  if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
-    if(fd0 >= 0)
-      p->ofile[fd0] = 0;
+  if ((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0) {
+    if (fd0 >= 0) p->ofile[fd0] = 0;
     fileclose(rf);
     fileclose(wf);
     return -1;
   }
-  if(copyout(p->pagetable, fdarray, (char*)&fd0, sizeof(fd0)) < 0 ||
-     copyout(p->pagetable, fdarray+sizeof(fd0), (char *)&fd1, sizeof(fd1)) < 0){
+  if (copyout(p->pagetable, fdarray, (char *)&fd0, sizeof(fd0)) < 0 ||
+      copyout(p->pagetable, fdarray + sizeof(fd0), (char *)&fd1, sizeof(fd1)) < 0) {
     p->ofile[fd0] = 0;
     p->ofile[fd1] = 0;
     fileclose(rf);
@@ -496,21 +423,18 @@ sys_pipe(void)
   return 0;
 }
 
-#define MMAP_VA_BEGIN ((uint64) 1 << 30)
-#define MMAP_VA_SIZE  ((uint64) 1 << 34)
-#define MMAP_VA_END   (MAXVA)
+#define MMAP_VA_BEGIN ((uint64)1 << 30)
+#define MMAP_VA_SIZE ((uint64)1 << 34)
+#define MMAP_VA_END (MAXVA)
 // #define MMAP_VA_END   (MMAP_VA_BEGIN + MMAP_VA_SIZE)
 
 // #define MMAP_VA_BITMAP_CAP (MMAP_VA_SIZE / PGSIZE)
 // static uint8 free_va_bitmap[MMAP_VA_BITMAP_CAP / 8] = { 0 };
 
-uint64
-mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages)
-{
-  if (begin <= MMAP_VA_BEGIN || begin >= (MMAP_VA_END - n_pages * PGSIZE))
-    begin = MMAP_VA_BEGIN;
+uint64 mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages) {
+  if (begin <= MMAP_VA_BEGIN || begin >= (MMAP_VA_END - n_pages * PGSIZE)) begin = MMAP_VA_BEGIN;
 
-  for (;begin < MMAP_VA_END; begin += PGSIZE) {
+  for (; begin < MMAP_VA_END; begin += PGSIZE) {
     int found = 1;
     for (int j = 0; j < n_pages; j++) {
       uint64 addr = walkaddr(pagetable, begin + (j * PGSIZE));
@@ -524,15 +448,11 @@ mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages)
 
   panic("mmap_find_space no free pages left");
   return -1;
-
 }
 
-uint
-bmap(struct inode *ip, uint bn);
+uint bmap(struct inode *ip, uint bn);
 
-static void
-add_mapping(struct proc *p, uint64 va, int n_pages, int shared)
-{
+static void add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
   // add the new mapping to proc struct
   taken_list *entry = p->mmaped_pages;
   while (entry->used) {
@@ -542,20 +462,18 @@ add_mapping(struct proc *p, uint64 va, int n_pages, int shared)
         (entry - 1)->next = kalloc();
         memset((entry - 1)->next, 0, PGSIZE);
       }
-      
+
       entry = (entry - 1)->next;
     }
   }
 
-  entry->va = va;
+  entry->va      = va;
   entry->n_pages = n_pages;
-  entry->used = 1;
-  entry->shared = shared;
+  entry->used    = 1;
+  entry->shared  = shared;
 }
 
-uint64
-sys_mmap(void)
-{
+uint64 sys_mmap(void) {
   uint64 va;
   int size, n_pages, prot, flags, fd, offset;
 
@@ -570,7 +488,7 @@ sys_mmap(void)
 
 
   n_pages = (size + PGSIZE - 1) / PGSIZE;
-  va = PGROUNDDOWN(va);
+  va      = PGROUNDDOWN(va);
 
   // POSIX says, so I follow
   if (!(flags & (MAP_PRIVATE | MAP_SHARED))) return MAP_FAILED;
@@ -608,14 +526,12 @@ sys_mmap(void)
   //    fail if there is ANY already existing mapping in the requested region
   if (flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) {
     for (int i = 0; i < n_pages; i++) {
-      if (walkaddr(p->pagetable, va + i*PGSIZE)) {
-        if (flags & MAP_FIXED_NOREPLACE)
-          return MAP_FAILED;
-        
+      if (walkaddr(p->pagetable, va + i * PGSIZE)) {
+        if (flags & MAP_FIXED_NOREPLACE) return MAP_FAILED;
+
         if (flags & MAP_FIXED) {
-          pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
-          if (!(*pte & PTE_U))
-            return MAP_FAILED;
+          pte_t *pte = walk(p->pagetable, va + i * PGSIZE, 0);
+          if (!(*pte & PTE_U)) return MAP_FAILED;
         }
       }
     }
@@ -623,7 +539,7 @@ sys_mmap(void)
 
   // MMAP file stuff (we can only map shared pages)
   // TODO: Change if implement private file backed mappings
-  if(!(flags & MAP_ANON) && (flags & MAP_SHARED)) {
+  if (!(flags & MAP_ANON) && (flags & MAP_SHARED)) {
 
     if (fd < 0) return MAP_FAILED;
 
@@ -631,7 +547,7 @@ sys_mmap(void)
 
     if (f == 0 || !f->readable) return MAP_FAILED;
 
-    if (f->type != FD_INODE){
+    if (f->type != FD_INODE) {
       panic("Help, no inode");
       return MAP_FAILED;
     }
@@ -640,7 +556,7 @@ sys_mmap(void)
 
     ilock(node);
 
-    if (node->size < size){
+    if (node->size < size) {
       iunlock(node);
       printk("size unlucky\n");
       return MAP_FAILED;
@@ -650,19 +566,17 @@ sys_mmap(void)
 
     int bytes_read = 0;
 
-    for(int b_index = offset / BSIZE; b_index < n_pages; b_index++){
+    for (int b_index = offset / BSIZE; b_index < n_pages; b_index++) {
       uint disk_addr = bmap(node, b_index);
-      if (disk_addr == 0)
-        break;
+      if (disk_addr == 0) break;
       cur_buf = bread(node->dev, disk_addr);
-      if (!cur_buf->valid)
-      {
+      if (!cur_buf->valid) {
         printk("not even valid lol\n");
         return MAP_FAILED;
       }
 
       int n = size - bytes_read > BSIZE ? BSIZE : size - bytes_read;
-      if (b_index == 0) n-=offset % BSIZE;
+      if (b_index == 0) n -= offset % BSIZE;
 
       // TODO: VA FINDUNG DAVOR MACHEN!
       if (mappages(p->pagetable, va + (b_index - (offset / BSIZE)) * PGSIZE, n, (uint64)cur_buf->data, perm) < 0) {
@@ -680,21 +594,19 @@ sys_mmap(void)
     return va;
   }
 
-  
-  // we now have a valid va to work with, allocate physical memory and 
+
+  // we now have a valid va to work with, allocate physical memory and
   // map va's to it
   for (int i = 0; i < n_pages; i++) {
     // va not mapped
-    if (walkaddr(p->pagetable, va + i*PGSIZE) == 0) {
-      uint64 pa = (uint64) kalloc();
-      if (mappages(p->pagetable, va + i*PGSIZE, PGSIZE, pa, perm) < 0) {
-        panic("mmap");
-      }
+    if (walkaddr(p->pagetable, va + i * PGSIZE) == 0) {
+      uint64 pa = (uint64)kalloc();
+      if (mappages(p->pagetable, va + i * PGSIZE, PGSIZE, pa, perm) < 0) { panic("mmap"); }
     }
     // va already mapped and MAP_FIXED => update flags
     else if (flags & MAP_FIXED) {
-      pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
-      *pte = *pte & ~0x3FF;
+      pte_t *pte = walk(p->pagetable, va + i * PGSIZE, 0);
+      *pte       = *pte & ~0x3FF;
       *pte |= perm | PTE_V;
     }
     // va already mapped and no MAP_FIXED => what is going on
@@ -703,7 +615,7 @@ sys_mmap(void)
     }
 
     if (!(flags & MAP_UNINITIALIZED)) {
-      void* pa = (void*) walkaddr(p->pagetable, va + i*PGSIZE);
+      void *pa = (void *)walkaddr(p->pagetable, va + i * PGSIZE);
       if (pa == 0) panic("mmap wrong mapping");
       memset(pa, 0, PGSIZE);
     }
@@ -714,9 +626,7 @@ sys_mmap(void)
   return va;
 }
 
-int
-sys_munmap(void)
-{
+int sys_munmap(void) {
   uint64 addr;
   int size, n_pages;
 
@@ -735,8 +645,7 @@ sys_munmap(void)
     if (walkaddr(p->pagetable, va)) {
       pte_t *pte = walk(p->pagetable, va, 0);
       // TODO: move shared mapping info to pagetable entry instead of taken list
-      if (*pte & PTE_U)
-        uvmunmap(p->pagetable, va, 1, 1);
+      if (*pte & PTE_U) uvmunmap(p->pagetable, va, 1, 1);
     }
   }
 
