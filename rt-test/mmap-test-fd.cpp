@@ -28,6 +28,7 @@ void main()
 
     close(fd);
 
+    fd = open("tes_t.txt", O_RDONLY);
 
     int pid = fork();
     if (pid > 0) // parent
@@ -39,7 +40,6 @@ void main()
             return;
         }
 
-        fd = open("tes_t.txt", O_RDONLY);
         void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
         assert(strcmp((char*)va, string2) == 0);
         memset(va, 'A', 15);
@@ -51,7 +51,6 @@ void main()
     }
     else if (pid == 0) // child
     {
-        fd = open("tes_t.txt", O_RDONLY);
         void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
         assert(strcmp((char*)va, string) == 0);
 
