@@ -30,6 +30,10 @@ struct {
 void
 binit(void)
 {
+  for (int i = 0; i < NBUF; i++) {
+    bcache.buf[i].data = kalloc();
+  }
+
   struct buf *b;
 
   initlock(&bcache.lock, "bcache");
