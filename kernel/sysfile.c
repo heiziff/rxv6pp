@@ -527,6 +527,9 @@ mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages)
 
 }
 
+uint
+bmap(struct inode *ip, uint bn);
+
 uint64
 sys_mmap(void)
 {
@@ -563,6 +566,35 @@ sys_mmap(void)
     return MAP_FAILED;
   }
 
+
+  // TODO: maybe do all this with a process lock, to prevent whacky stuff
+  // i.e. when passing MAP_FIXED_NOREPLACE
+
+  // address hint points into buddy allocator region, search for another addr
+  if (!(flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE)) {
+    va = mmap_find_space(p->pagetable, va, n_pages);
+    if (va == -1) return MAP_FAILED;
+  }
+
+  // checks for MAP_FIXED:
+  //    fail if there is a non user accessible page inside the requested region
+  // checks for MAP_FIXED_NOREPLACE:
+  //    fail if there is ANY already existing mapping in the requested region
+  if (flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) {
+    for (int i = 0; i < n_pages; i++) {
+      if (walkaddr(p->pagetable, va + i*PGSIZE)) {
+        if (flags & MAP_FIXED_NOREPLACE)
+          return MAP_FAILED;
+        
+        if (flags & MAP_FIXED) {
+          pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
+          if (!(*pte & PTE_U))
+            return MAP_FAILED;
+        }
+      }
+    }
+  }
+
   // MMAP file stuff
   if(fd > 0) {
 
@@ -596,42 +628,17 @@ sys_mmap(void)
       if (b_index == 0) n-=offset % BSIZE;
 
       // TODO: VA FINDUNG DAVOR MACHEN!
-      mappages(p->pagetable, va, n, cur_buf->data, perm);
+      mappages(p->pagetable, va, n, (uint64) cur_buf->data, perm);
 
     }
       
     iunlock(f->ip);
-    //struct buf *buffer = bread(f->ip->dev, 0);
+
+    return va;
 
   }
 
-  // TODO: maybe do all this with a process lock, to prevent whacky stuff
-  // i.e. when passing MAP_FIXED_NOREPLACE
-
-  // address hint points into buddy allocator region, search for another addr
-  if (!(flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE)) {
-    va = mmap_find_space(p->pagetable, va, n_pages);
-    if (va == -1) return MAP_FAILED;
-  }
-
-  // checks for MAP_FIXED:
-  //    fail if there is a non user accessible page inside the requested region
-  // checks for MAP_FIXED_NOREPLACE:
-  //    fail if there is ANY already existing mapping in the requested region
-  if (flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) {
-    for (int i = 0; i < n_pages; i++) {
-      if (walkaddr(p->pagetable, va + i*PGSIZE)) {
-        if (flags & MAP_FIXED_NOREPLACE)
-          return MAP_FAILED;
-        
-        if (flags & MAP_FIXED) {
-          pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
-          if (!(*pte & PTE_U))
-            return MAP_FAILED;
-        }
-      }
-    }
-  }
+  
 
   // we now have a valid va to work with, allocate physical memory and 
   // map va's to it
