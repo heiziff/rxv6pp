@@ -573,10 +573,13 @@ sys_mmap(void)
   va = PGROUNDDOWN(va);
 
   // POSIX says, so I follow
-  if (!(flags & MAP_PRIVATE)) return MAP_FAILED;
+  if (!(flags & (MAP_PRIVATE | MAP_SHARED))) return MAP_FAILED;
+  if (flags & MAP_PRIVATE && flags & MAP_SHARED) return MAP_FAILED;
   if (n_pages <= 0) return MAP_FAILED;
-  if (!(flags & MAP_ANON)) return MAP_FAILED;
-  // if (va % PGSIZE != 0) return MAP_FAILED;
+
+  // TODO: Remove if implement private file backed mappings
+  if (!(flags & MAP_ANON) && !(flags & MAP_SHARED)) return MAP_FAILED;
+  if ((flags & MAP_ANON) && (flags & MAP_SHARED)) return MAP_FAILED;
 
   int perm = 0;
   perm |= PTE_U;
@@ -618,10 +621,15 @@ sys_mmap(void)
     }
   }
 
-  // MMAP file stuff
-  if(fd > 0) {
+  // MMAP file stuff (we can only map shared pages)
+  // TODO: Change if implement private file backed mappings
+  if(!(flags & MAP_ANON) && (flags & MAP_SHARED)) {
+
+    if (fd < 0) return MAP_FAILED;
 
     struct file *f = p->ofile[fd];
+
+    if (f == 0 || !f->readable) return MAP_FAILED;
 
     if (f->type != FD_INODE){
       panic("Help, no inode");
