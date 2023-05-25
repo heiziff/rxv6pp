@@ -108,7 +108,7 @@ $U/initcode: $U/initcode.S
 tags: $(OBJS) _init
 	etags *.S *.c
 
-ULIB = $U/ulib.o $U/usys.o $U/printf.o $U/umalloc.o $U/bmalloc.o $U/mmap-mock.o $U/user.o
+ULIB = $U/ulib.o $U/usys.o $U/printf.o $U/umalloc.o $U/bmalloc.o $U/user.o
 
 _%: %.o $(ULIB)
 	$(LD) $(LDFLAGS) -T $U/user.ld -o $@ $^
@@ -223,10 +223,18 @@ rt-test.img: mkfs/mkfs $(RUNTIMEBIN)
 rt-test: $K/kernel rt-test.img
 	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-test.img,$(QEMUOPTS.drive))
 
+BENCHMARK_QEMU_FOLDER = ~/Develop/KIT/osdev/qemu/build
+BENCHMARK_QEMU_ADDITIONAL_OPTIONS = -plugin ~/Develop/KIT/osdev/qemu/build/tests/plugin/libinsn.so,inline=on -d plugin
 BENCHMARKFOLDER = rt-bench
 BENCHMARK = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(BENCHMARKFOLDER)/*.$(ext)))
 BENCHMARKOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(BENCHMARK))))
 BENCHMARKBIN = $(foreach object,$(filter %.o,$(BENCHMARKOUT)),$(dir $(object))_$(basename $(notdir $(object))))
+BENCHMARKEXEC = $(foreach benchmark,$(filter %bench,$(BENCHMARKBIN)),\
+	mkfs/mkfs rt-bench-individual.img rt-bench/_init $(benchmark); \
+	PATH=$(BENCHMARK_QEMU_FOLDER):$$PATH \
+		timeout -k 20s --foreground 1h \
+		$(QEMU) $(subst -smp 3,-smp 1,$(QEMUOPTS)) $(subst fs.img,rt-bench-individual.img,$(QEMUOPTS.drive)) $(BENCHMARK_QEMU_ADDITIONAL_OPTIONS) \
+		$(NEWLINE))
 
 rt-bench.img: mkfs/mkfs $(BENCHMARKBIN)
 	mkfs/mkfs rt-bench.img $(BENCHMARKBIN)
@@ -234,7 +242,13 @@ rt-bench.img: mkfs/mkfs $(BENCHMARKBIN)
 rt-bench: $K/kernel rt-bench.img
 	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-bench.img,$(QEMUOPTS.drive))
 
+define NEWLINE
 
+
+endef
+
+rt-bench-individual: $K/kernel mkfs/mkfs $(BENCHMARKBIN)
+	$(BENCHMARKEXEC)
 
 test : ct-test rt-test
 

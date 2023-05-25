@@ -16,16 +16,16 @@ extern "C" {
  * wraps pointer, size and alignment
  */
 struct block {
-    void *begin;
-    uint32_t size;
-    uint32_t align;
+  void *begin;
+  uint32_t size;
+  uint32_t align;
 };
 typedef struct block block;
 
 #ifndef __cplusplus
-#define BALLOC(T,N) block_alloc(sizeof(T)*(N), _Alignof(T))
+#define BALLOC(T, N) block_alloc(sizeof(T) * (N), _Alignof(T))
 #else
-#define BALLOC(T,N) block_alloc(sizeof(T)*(N), alignof(T))
+#define BALLOC(T, N) block_alloc(sizeof(T) * (N), alignof(T))
 #endif
 
 block block_alloc(uint32_t size, uint32_t align);
@@ -44,26 +44,19 @@ void setup_malloc(void);
 
 template<typename T>
 struct typed_block {
-    T *begin;
-    uint32_t size;
-    uint32_t align;
-    explicit operator block() {
-        return {static_cast<void*>(begin), size, align};
-    }
-    auto untyped() {
-        return static_cast<block>(*this);
-    }
-    static typed_block make_typed(block b) {
-        return {static_cast<T*>(b.begin), b.size, b.align};
-    }
+  T *begin;
+  uint32_t size;
+  uint32_t align;
+  explicit operator block() { return {static_cast<void *>(begin), size, align}; }
+  auto untyped() { return static_cast<block>(*this); }
+  static typed_block make_typed(block b) { return {static_cast<T *>(b.begin), b.size, b.align}; }
 };
 
 template<typename T>
 inline typed_block<T> block_alloc_typed(uint32_t num_elements) {
-    return typed_block<T>::make_typed(block_alloc(num_elements * sizeof(T), alignof(T)));
+  return typed_block<T>::make_typed(block_alloc(num_elements * sizeof(T), alignof(T)));
 };
 
 #endif
 
 #endif
-

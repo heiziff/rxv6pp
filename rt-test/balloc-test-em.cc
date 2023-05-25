@@ -7,8 +7,8 @@
 #include "user/bmalloc.h"
 
 void main() {
-  setup_malloc();
-  auto malloced = malloc(0);
-  assert(!malloced);
-  free(malloced);
+  setup_balloc();
+  auto block = block_alloc(0, 1);
+  assert(!block.begin);
+  block_free(block);
 }

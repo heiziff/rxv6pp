@@ -1,0 +1,18 @@
+#!/bin/bash
+
+find . -type f -name '*.clangfmt_keep' -exec rm {} ';'
+
+if  ! $(./format) ; then
+    echo "./format failed - is clang-format installed?"
+    exit 2
+fi
+
+keep_files=$(find . -type f -name "*.clangfmt_keep" -not -path "./libfirm/*" -print -exec rm {} ';')
+
+if [[ ${keep_files} ]]; then
+    echo "Found clang-format issues in the following files:"
+    echo ${keep_files}
+    exit 1
+fi
+echo "Everything is properly formatted"
+exit 0

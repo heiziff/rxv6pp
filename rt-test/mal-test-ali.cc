@@ -1,6 +1,6 @@
 /*!
  * \file
- * \brief page aligned allocations
+ * \brief test allocation alignments, using malloc
  */
 
 #include "rt-test/assert.h"
@@ -21,19 +21,22 @@ void test_align(void *ptr, int alignment) {
     assert((val & 7) == 0);
     return;
   }
-  assert((val & 15));
+  assert(!(val & 15));
 }
 
 void main() {
-  for (int i = 4096; i < 1 << 16; ++i) {
-    void *ptr = malloc(i);
-    assert(ptr);
-    assert(!(reinterpret_cast<uint64>(ptr) & ((1 << 12) - 1)));
-    free(ptr);
+  setup_malloc();
+  for (int i = 1; i < 16; ++i) {
+    auto malloced = malloc(i);
+    assert(malloced);
+    test_align(malloced, i);
+    free(malloced);
+  }
 
-    auto block = block_alloc(i, 4096);
-    assert(block.begin);
-    assert(!(reinterpret_cast<uint64>(block.begin) & ((1 << 12) - 1)));
-    block_free(block);
+  for (int i = 16; i < 4096; ++i) {
+    auto malloced = malloc(i);
+    assert(malloced);
+    test_align(malloced, 16);
+    free(malloced);
   }
 }
