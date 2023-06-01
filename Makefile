@@ -163,11 +163,13 @@ fs.img: mkfs/mkfs README $(UPROGS)
 
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
-	*/*.o */*.d */*.asm */*.sym \
-	$U/initcode $U/initcode.out $K/kernel fs.img rt-test.img rt-bench.img \
+	**/*.o **/*.d **/*.asm **/*.sym \
+	benchmarks*/*/*.o benchmarks*/*/*.d benchmarks*/*/*.asm benchmarks*/*/*.sym \
+	$U/initcode $U/initcode.out $K/kernel *.img \
 	mkfs/mkfs .gdbinit \
 	$U/usys.S \
-	$(RUNTIMETESTFOLDER)/_* $(BENCHMARKFOLDER)/_* \
+	$(RUNTIMETESTFOLDER.local)/_* $(BENCHMARKFOLDER.local)/_* \
+	$(RUNTIMETESTFOLDER.shared)/_* $(BENCHMARKFOLDER.shared)/_* \
 	$(UPROGS)
 
 # try to generate a unique GDB port
