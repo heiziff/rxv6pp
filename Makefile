@@ -218,34 +218,56 @@ rt-test: $K/kernel rt-test.img
 
 BENCHMARK_QEMU_FOLDER = ~/Develop/KIT/osdev/qemu/build
 BENCHMARK_QEMU_ADDITIONAL_OPTIONS = -plugin ~/Develop/KIT/osdev/qemu/build/tests/plugin/libinsn.so,inline=on -d plugin
-BENCHMARKFOLDER = rt-bench
-BENCHMARK = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(BENCHMARKFOLDER)/*.$(ext)))
-BENCHMARKOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(BENCHMARK))))
-BENCHMARKBIN = $(foreach object,$(filter %.o,$(BENCHMARKOUT)),$(dir $(object))_$(basename $(notdir $(object))))
-BENCHMARKEXEC = $(foreach benchmark,$(filter %bench,$(BENCHMARKBIN)),\
-	mkfs/mkfs rt-bench-individual.img rt-bench/_init $(benchmark); \
+
+BENCHMARKFOLDER.local = rt-bench
+BENCHMARKFOLDER.shared = benchmarks/benchmarks
+
+BENCHMARK.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(BENCHMARKFOLDER.local)/*.$(ext)))
+BENCHMARKOUT.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(BENCHMARK.local))))
+BENCHMARKBIN.local = $(foreach object,$(filter %.o,$(BENCHMARKOUT.local)),$(dir $(object))_$(basename $(notdir $(object))))
+BENCHMARKEXEC.local = $(foreach benchmark,$(filter %bench,$(BENCHMARKBIN.local)),\
+	mkfs/mkfs rt-bench-individual.local.img ${BENCHMARKFOLDER.local}/_init $(benchmark); \
 	PATH=$(BENCHMARK_QEMU_FOLDER):$$PATH \
 		timeout -k 20s --foreground 1h \
-		$(QEMU) $(subst -smp 3,-smp 1,$(QEMUOPTS)) $(subst fs.img,rt-bench-individual.img,$(QEMUOPTS.drive)) $(BENCHMARK_QEMU_ADDITIONAL_OPTIONS) \
+		$(QEMU) $(subst -smp 3,-smp 1,$(QEMUOPTS)) $(subst fs.img,rt-bench-individual.local.img,$(QEMUOPTS.drive)) $(BENCHMARK_QEMU_ADDITIONAL_OPTIONS) \
 		$(NEWLINE))
 
-rt-bench.img: mkfs/mkfs $(BENCHMARKBIN)
-	mkfs/mkfs rt-bench.img $(BENCHMARKBIN)
+BENCHMARK.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(BENCHMARKFOLDER.shared)/*.$(ext)))
+BENCHMARKOUT.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(BENCHMARK.shared))))
+BENCHMARKBIN.shared = $(foreach object,$(filter %.o,$(BENCHMARKOUT.shared)),$(dir $(object))_$(basename $(notdir $(object))))
+BENCHMARKEXEC.shared = $(foreach benchmark,$(filter %bench,$(BENCHMARKBIN.shared)),\
+	mkfs/mkfs rt-bench-individual.shared.img ${BENCHMARKFOLDER.shared}/_init $(benchmark); \
+	PATH=$(BENCHMARK_QEMU_FOLDER):$$PATH \
+		timeout -k 20s --foreground 1h \
+		$(QEMU) $(subst -smp 3,-smp 1,$(QEMUOPTS)) $(subst fs.img,rt-bench-individual.shared.img,$(QEMUOPTS.drive)) $(BENCHMARK_QEMU_ADDITIONAL_OPTIONS) \
+		$(NEWLINE))
 
-rt-bench: $K/kernel rt-bench.img
-	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-bench.img,$(QEMUOPTS.drive))
+rt-bench.local.img: mkfs/mkfs $(BENCHMARKBIN.local)
+	mkfs/mkfs ${@} $(BENCHMARKBIN.local)
+rt-bench.shared.img: mkfs/mkfs $(BENCHMARKBIN.shared)
+	mkfs/mkfs ${@} $(BENCHMARKBIN.shared)
+
+rt-bench.local: $K/kernel rt-bench.local.img
+	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-bench.local.img,$(QEMUOPTS.drive))
+rt-bench.shared: $K/kernel rt-bench.shared.img
+	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-bench.shared.img,$(QEMUOPTS.drive))
 
 define NEWLINE
 
 
 endef
 
-rt-bench-individual: $K/kernel mkfs/mkfs $(BENCHMARKBIN)
-	$(BENCHMARKEXEC)
+rt-bench-individual.local: $K/kernel mkfs/mkfs $(BENCHMARKBIN.local)
+	$(BENCHMARKEXEC.local)
+rt-bench-individual.shared: $K/kernel mkfs/mkfs $(BENCHMARKBIN.shared)
+	$(BENCHMARKEXEC.shared)
+
+rt-bench-individual: rt-bench-individual.local rt-bench-individual.shared
 
 test: ct-test rt-test
 
-bench: rt-bench
+bench.local: rt-bench.local
+bench.shared: rt-bench.shared
 
 eval: test bench
 
