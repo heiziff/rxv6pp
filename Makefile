@@ -197,24 +197,36 @@ qemu-gdb: $K/kernel .gdbinit fs.img
 
 
 LANGUAGE_EXTENSION = c cpp cxx c++ cc
-COMPILETESTFOLDER = ct-test
-COMPILETEST = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER)/*.$(ext)))
-COMPILEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST))))
-#$(info $$(COMPILETEST) is $(COMPILETEST))
-#$(info $$(COMPILEOUT) is $(COMPILEOUT))
+COMPILETESTFOLDER.local = ct-test
+COMPILETEST.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER.local)/*.$(ext)))
+COMPILEOUT.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST.local))))
 
-ct-test: $(COMPILEOUT)
+COMPILETESTFOLDER.shared = ct-test
+COMPILETEST.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER.shared)/*.$(ext)))
+COMPILEOUT.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST.local))))
 
-RUNTIMETESTFOLDER = rt-test
-RUNTIMETEST = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(RUNTIMETESTFOLDER)/*.$(ext)))
-RUNTIMEOUT = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(RUNTIMETEST))))
-RUNTIMEBIN = $(foreach object,$(filter %.o,$(RUNTIMEOUT)),$(dir $(object))_$(basename $(notdir $(object))))
+ct-test.local: $(COMPILEOUT.local)
+ct-test.shared: $(COMPILEOUT.shared)
 
-rt-test.img: mkfs/mkfs $(RUNTIMEBIN)
-	mkfs/mkfs rt-test.img $(RUNTIMEBIN)
+RUNTIMETESTFOLDER.local = rt-test
+RUNTIMETEST.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(RUNTIMETESTFOLDER.local)/*.$(ext)))
+RUNTIMEOUT.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(RUNTIMETEST.local))))
+RUNTIMEBIN.local = $(foreach object,$(filter %.o,$(RUNTIMEOUT.local)),$(dir $(object))_$(basename $(notdir $(object))))
 
-rt-test: $K/kernel rt-test.img
-	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-test.img,$(QEMUOPTS.drive))
+RUNTIMETESTFOLDER.shared = rt-test
+RUNTIMETEST.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(RUNTIMETESTFOLDER.shared)/*.$(ext)))
+RUNTIMEOUT.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(RUNTIMETEST.shared))))
+RUNTIMEBIN.shared = $(foreach object,$(filter %.o,$(RUNTIMEOUT.shared)),$(dir $(object))_$(basename $(notdir $(object))))
+
+rt-test.local.img: mkfs/mkfs $(RUNTIMEBIN.local)
+	mkfs/mkfs ${@} $(RUNTIMEBIN.local)
+rt-test.shared.img: mkfs/mkfs $(RUNTIMEBIN.shared)
+	mkfs/mkfs ${@} $(RUNTIMEBIN.shared)
+
+rt-test.local: $K/kernel rt-test.local.img
+	$(QEMU) $(QEMUOPTS) $(subst fs.img,${@}.img,$(QEMUOPTS.drive))
+rt-test.shared: $K/kernel rt-test.shared.img
+	$(QEMU) $(QEMUOPTS) $(subst fs.img,${@}.img,$(QEMUOPTS.drive))
 
 BENCHMARK_QEMU_FOLDER = ~/Develop/KIT/osdev/qemu/build
 BENCHMARK_QEMU_ADDITIONAL_OPTIONS = -plugin ~/Develop/KIT/osdev/qemu/build/tests/plugin/libinsn.so,inline=on -d plugin
@@ -264,11 +276,12 @@ rt-bench-individual.shared: $K/kernel mkfs/mkfs $(BENCHMARKBIN.shared)
 
 rt-bench-individual: rt-bench-individual.local rt-bench-individual.shared
 
-test: ct-test rt-test
+test.local: ct-test.local rt-test.local
+test.shared: ct-test.shared rt-test.shared
 
 bench.local: rt-bench.local
 bench.shared: rt-bench.shared
 
-eval: test bench
+eval: test.local test.shared bench.local test.shared
 
 all: fs.img eval
