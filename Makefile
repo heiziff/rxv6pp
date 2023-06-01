@@ -243,7 +243,7 @@ endef
 rt-bench-individual: $K/kernel mkfs/mkfs $(BENCHMARKBIN)
 	$(BENCHMARKEXEC)
 
-test : ct-test rt-test
+test: ct-test rt-test
 
 bench: rt-bench
 
