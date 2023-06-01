@@ -203,7 +203,7 @@ COMPILETESTFOLDER.local = ct-test
 COMPILETEST.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER.local)/*.$(ext)))
 COMPILEOUT.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST.local))))
 
-COMPILETESTFOLDER.shared = ct-test
+COMPILETESTFOLDER.shared = benchmarks/compile
 COMPILETEST.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER.shared)/*.$(ext)))
 COMPILEOUT.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST.shared))))
 
@@ -215,7 +215,7 @@ RUNTIMETEST.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(RUNTIMETEST
 RUNTIMEOUT.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(RUNTIMETEST.local))))
 RUNTIMEBIN.local = $(foreach object,$(filter %.o,$(RUNTIMEOUT.local)),$(dir $(object))_$(basename $(notdir $(object))))
 
-RUNTIMETESTFOLDER.shared = rt-test
+RUNTIMETESTFOLDER.shared = benchmarks/tests
 RUNTIMETEST.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(RUNTIMETESTFOLDER.shared)/*.$(ext)))
 RUNTIMEOUT.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(RUNTIMETEST.shared))))
 RUNTIMEBIN.shared = $(foreach object,$(filter %.o,$(RUNTIMEOUT.shared)),$(dir $(object))_$(basename $(notdir $(object))))
