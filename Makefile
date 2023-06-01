@@ -205,7 +205,7 @@ COMPILEOUT.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, 
 
 COMPILETESTFOLDER.shared = ct-test
 COMPILETEST.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER.shared)/*.$(ext)))
-COMPILEOUT.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST.local))))
+COMPILEOUT.shared = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST.shared))))
 
 ct-test.local: $(COMPILEOUT.local)
 ct-test.shared: $(COMPILEOUT.shared)
