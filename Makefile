@@ -284,6 +284,6 @@ test.shared: ct-test.shared rt-test.shared
 bench.local: rt-bench.local
 bench.shared: rt-bench.shared
 
-eval: test.local test.shared bench.local test.shared
+eval: test.local test.shared bench.local bench.shared
 
 all: fs.img eval
