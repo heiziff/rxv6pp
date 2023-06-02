@@ -164,7 +164,7 @@ fs.img: mkfs/mkfs README $(UPROGS)
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	**/*.o **/*.d **/*.asm **/*.sym \
-	benchmarks*/*/*.o benchmarks*/*/*.d benchmarks*/*/*.asm benchmarks*/*/*.sym \
+	shared*/*/*.o shared*/*/*.d shared*/*/*.asm shared*/*/*.sym \
 	$U/initcode $U/initcode.out $K/kernel *.img \
 	mkfs/mkfs .gdbinit \
 	$U/usys.S \
@@ -200,11 +200,11 @@ qemu-gdb: $K/kernel .gdbinit fs.img
 
 LANGUAGE_EXTENSION = c cpp cxx c++ cc
 COMPILETESTFOLDER.local = ct-test
-COMPILETESTFOLDER.shared = benchmarks/compile
+COMPILETESTFOLDER.shared = shared/compile
 RUNTIMETESTFOLDER.local = rt-test
-RUNTIMETESTFOLDER.shared = benchmarks/tests
+RUNTIMETESTFOLDER.shared = shared/tests
 BENCHMARKFOLDER.local = rt-bench
-BENCHMARKFOLDER.shared = benchmarks/benchmarks
+BENCHMARKFOLDER.shared = shared/benchmarks
 
 COMPILETEST.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(wildcard $(COMPILETESTFOLDER.local)/*.$(ext)))
 COMPILEOUT.local = $(foreach ext,$(LANGUAGE_EXTENSION),$(patsubst %.$(ext),%.o, $(filter %.$(ext),$(COMPILETEST.local))))
