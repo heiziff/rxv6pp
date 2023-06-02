@@ -14,4 +14,3 @@
 #include "kernel/syscall.h"
 #include "kernel/types.h"
 #include "kernel/virtio.h"
-#include "user/user.h"
