@@ -281,10 +281,12 @@ rt-bench-individual: rt-bench-individual.local rt-bench-individual.shared
 
 test.local: ct-test.local rt-test.local
 test.shared: ct-test.shared rt-test.shared
+test: test.local test.shared
 
 bench.local: rt-bench.local
 bench.shared: rt-bench.shared
+bench: bench.local bench.shared
 
-eval: test.local test.shared bench.local bench.shared
+eval: test bench
 
 all: fs.img eval
