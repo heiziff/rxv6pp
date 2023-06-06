@@ -16,7 +16,6 @@ int main(int argc, char **)
     printf("testing freeing... ");
     for (i = 0; i < 260; i++)
     {
-        printf("free %d\n", i + 1);
         free(ps[i]);
     }
     printf("OK\n");
