@@ -14,6 +14,7 @@ extern "C" {
 #include "kernel/file.h"
 #include "kernel/proc.h"
 #include "kernel/stat.h"
+#include "kernel/mmap.h"
 
 
 // start.c

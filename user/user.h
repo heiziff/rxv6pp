@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 #include "kernel/stat.h"
+#include "kernel/mmap.h"
 
 
 #define NULL ((void*)0)
@@ -37,6 +38,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+void* mmap(void*, int, int, int);
 void cxx(int);
 void term();
 

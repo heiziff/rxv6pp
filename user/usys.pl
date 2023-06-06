@@ -38,4 +38,5 @@ entry("sleep");
 entry("uptime");
 entry("cxx");
 entry("term");
+entry("mmap")
 

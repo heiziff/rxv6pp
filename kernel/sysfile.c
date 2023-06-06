@@ -494,3 +494,80 @@ sys_pipe(void)
   }
   return 0;
 }
+
+
+#define EINVAL     (-1)
+#define MAP_FAILED (-1)
+
+#define MMAP_VA_BEGIN ((uint64) 1 << 34)
+#define MMAP_VA_SIZE  ((uint64) 1 << 34)
+#define MMAP_VA_END   (MMAP_VA_BEGIN + MMAP_VA_SIZE)
+
+// #define MMAP_VA_BITMAP_CAP (MMAP_VA_SIZE / PGSIZE)
+// static uint8 free_va_bitmap[MMAP_VA_BITMAP_CAP / 8] = { 0 };
+
+uint64
+mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages)
+{
+  if (begin <= MMAP_VA_BEGIN || begin >= (MAXVA - n_pages * PGSIZE))
+    begin = MMAP_VA_BEGIN;
+
+  for (;begin < MAXVA; begin += PGSIZE) {
+    int found = 1;
+    for (int j = 0; j < n_pages; j++) {
+      uint64 addr = walkaddr(pagetable, begin + (j * PGSIZE));
+      if (addr) {
+        found = 0;
+        break;
+      }
+    }
+    if (found) return begin;
+  }
+
+  panic("mmap_find_space no free pages left");
+  return -1;
+
+}
+
+uint64
+sys_mmap(void)
+{
+  uint64 va;
+  int n_pages, prot, flags;
+
+  struct proc *p = myproc();
+
+  argaddr(0, &va);
+  argint(1, &n_pages);
+  argint(2, &prot);
+  argint(3, &flags);
+
+  // POSIX says, so I follow
+  if (n_pages <= 0) return EINVAL;
+  if (!(flags & MAP_PRIVATE)) return EINVAL;
+  // if (va_hint % PGSIZE != 0) return EINVAL;
+
+  int perm = 0;
+  perm |= PTE_U;
+  if (prot & PROT_READ) perm |= PTE_R;
+  if (prot & PROT_WRITE) perm |= PTE_W;
+  if (prot & PROT_EXEC) perm |= PTE_X;
+
+  if (!(flags & MAP_FIXED) || va == 0) {
+    va = mmap_find_space(p->pagetable, va, n_pages);
+    if (va == -1) return MAP_FAILED;
+  }
+
+  // we now have a valid va to work with, allocate physical memory and 
+  // map va's to it
+  for (int i = 0; i < n_pages; i++) {
+    if (walkaddr(p->pagetable, va + i*PGSIZE) == 0) {
+        uint64 pa = (uint64) kalloc();
+        if (mappages(p->pagetable, va + i*PGSIZE, PGSIZE, pa, perm) < 0) {
+          panic("mmap")
+        }
+      }
+  }
+
+  return va;
+}
