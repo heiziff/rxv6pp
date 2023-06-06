@@ -71,7 +71,7 @@ extern "C"
     free_list_pop(free_list_t &list)
     {
         if (list.prev == &list)
-            return NULL;
+            return (free_list_t*)NULL;
         free_list_t *last = list.prev;
         free_list_remove(*last);
 
@@ -334,10 +334,10 @@ extern "C"
             base_ptr = (uint8 *)sbrk(0);
             if ((uint64)(base_ptr + HEADER_SIZE) & (PAGE_SIZE - 1))
             {
-                printf("growing stack for malloc by: %d\n", PAGE_SIZE - ((uint64)base_ptr % PAGE_SIZE) - HEADER_SIZE);
-                char* old = sbrk(PAGE_SIZE - ((uint64)base_ptr % PAGE_SIZE) - HEADER_SIZE);
+                // printf("growing stack for malloc by: %d\n", PAGE_SIZE - ((uint64)base_ptr % PAGE_SIZE) - HEADER_SIZE);
+                sbrk(PAGE_SIZE - ((uint64)base_ptr % PAGE_SIZE) - HEADER_SIZE);
                 base_ptr = (uint8 *)sbrk(0);
-                printf("from old %p to %p\n", old, base_ptr);
+                // printf("from old %p to %p\n", old, base_ptr);
             }
 
             max_ptr = base_ptr;
@@ -351,7 +351,7 @@ extern "C"
         }
 
         // Find ideal bucket to fit our allocation, DON'T FORGET THAT HEADER!
-        ssize_t ideal_bucket = bucket_for_alloc_size(size + HEADER_SIZE);
+        size_t ideal_bucket = bucket_for_alloc_size(size + HEADER_SIZE);
 
         // Make sure that we have at least tree for ideal bucket
         if (grow_tree_upto(ideal_bucket) != 0)
@@ -374,8 +374,8 @@ extern "C"
         // Now we aren't happy anymore
         // Find free bucket
         // current bucket is the bucket in which the please block is found (hopefully)
-        ssize_t current_bucket = ideal_bucket;
-        while (current_bucket >= 0)
+        size_t current_bucket = ideal_bucket;
+        while (current_bucket + 1 != 0)
         {
             if (grow_tree_upto(current_bucket) != 0)
             {
@@ -390,7 +390,7 @@ extern "C"
                 break;
             }
 
-            if (current_bucket == 0 || current_bucket > (ssize_t)root_bucket_index)
+            if (current_bucket == 0 || current_bucket > root_bucket_index)
             {
                 current_bucket--;
                 continue;
@@ -431,7 +431,7 @@ extern "C"
         }
 
         // Found block, write size and return correct adress, offset by header
-        *((size_t *)please) = (size_t)size;
+        *((uint64 *)please) = (uint64)size;
 
         return please + HEADER_SIZE;
     }
@@ -485,7 +485,7 @@ extern "C"
     // This way we can reuse and even combine both allocation strategies and still have decent
     // allocation speeds.
     block
-    block_alloc(uint32 size, uint32 align)
+    block_alloc(uint32_t size, uint32_t align)
     {
         block b;
 
@@ -495,19 +495,26 @@ extern "C"
         // To ensure we have enough space for the aligned block allocation, we request the
         // maximum amount of memory needed to fit the allocation + alignment
         uint maximum_size_needed = size + align;
+        if (size >= 4070) printf("b1\n");
         void *ptr = malloc(maximum_size_needed);
+        if (size >= 4070) printf("b2\n");
+
 
         b.begin = ptr;
         b.size = size;
         b.align = align;
 
-        size_t adr = (size_t)ptr;
-        if (adr % align == 0)
+        uint64 adr = (uint64)ptr;
+        if (adr % align == 0) {
+            if (size >= 4070) printf("got block begin %p for alignment %d\n", b.begin, align);
             return b;
+        }
 
         // in case the bucket ptr is not already aligned to "align" we need to move the begin
         // of the block so it is aligned again.
         b.begin = (void *)(adr + align - (adr % align));
+        if (size >= 4070 && align == 8) printf("b3\n");
+
         return b;
     }
 
@@ -518,7 +525,7 @@ extern "C"
             return;
 
         // figure out which bucket size was used for the allocation
-        uint allocated_size = b.size + b.align;
+        uint32 allocated_size = b.size + b.align;
         size_t bucket_idx = bucket_for_alloc_size(allocated_size + HEADER_SIZE);
 
         // little hacky: we want to get from the begin ptr of the block to the begin of its
