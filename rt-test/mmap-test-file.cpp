@@ -26,13 +26,12 @@ void main()
     close(fd);
     fd = open("tes_t.txt", O_RDONLY);
 
-    void *va = mmap((void *)0, strlen(string) + 1, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, fd, 0);
+    void *va = mmap((void *)0, strlen(string) + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     assert(strcmp((char *)va, string) == 0);
 
     munmap(va, strlen(string) + 1);
     close(fd);
-    printf("testcase 1 succeeded\n");
 
     char *string2 = (char *)malloc(2 * 4096 + 2);
     memset(string2, 'A', 2 * 4096 + 1);
@@ -54,15 +53,13 @@ void main()
     close(fd);
     fd = open("tes_t2.txt", O_RDONLY);
 
-    va = mmap((void *)0, strlen(string2) + 1, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, fd, 0);
+    va = mmap((void *)0, strlen(string2) + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     assert(strcmp((char *)va, string2) == 0);
 
     munmap(va, strlen(string2) + 1);
     close(fd);
     free(string2);
-
-    printf("testcase 2 succeeded\n");
 
     char test_buf[] = "AAAABBBB";
     char result[] = "AAAA";
@@ -75,12 +72,14 @@ void main()
     close(fd);
     fd = open("tes_t.txt", O_RDONLY);
 
-    va = mmap((void *)0, 5, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, fd, 0);
+    va = mmap((void *)0, 5, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     ((char *)va)[4] = 0;
     assert(strcmp((char *)va, result) == 0);
 
     munmap(va, 4);
     close(fd);
 
-    printf("testcase 3 succeeded\n");
+    assert(!unlink("tes_t.txt"));
+    assert(!unlink("tes_t2.txt"));
+
 }
