@@ -564,7 +564,7 @@ sys_mmap(void)
     if (walkaddr(p->pagetable, va + i*PGSIZE) == 0) {
         uint64 pa = (uint64) kalloc();
         if (mappages(p->pagetable, va + i*PGSIZE, PGSIZE, pa, perm) < 0) {
-          panic("mmap")
+          panic("mmap");
         }
       }
   }
