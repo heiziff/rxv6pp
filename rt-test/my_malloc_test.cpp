@@ -9,8 +9,6 @@ int main(int argc, char **)
     for (i = 0; i < 260; i++)
     {
         void *p = malloc(i + 1);
-        if (p == NULL)
-            printf("huch\n");
         ps[i] = p;
     }
     printf("OK\n");
@@ -18,7 +16,7 @@ int main(int argc, char **)
     printf("testing freeing... ");
     for (i = 0; i < 260; i++)
     {
-        printf("freeing %d\n", i + 1);
+        printf("free %d\n", i + 1);
         free(ps[i]);
     }
     printf("OK\n");
