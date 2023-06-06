@@ -495,13 +495,10 @@ sys_pipe(void)
   return 0;
 }
 
-
-#define EINVAL     (-1)
-#define MAP_FAILED (-1)
-
-#define MMAP_VA_BEGIN ((uint64) 1 << 34)
+#define MMAP_VA_BEGIN ((uint64) 1 << 30)
 #define MMAP_VA_SIZE  ((uint64) 1 << 34)
-#define MMAP_VA_END   (MMAP_VA_BEGIN + MMAP_VA_SIZE)
+#define MMAP_VA_END   (MAXVA)
+// #define MMAP_VA_END   (MMAP_VA_BEGIN + MMAP_VA_SIZE)
 
 // #define MMAP_VA_BITMAP_CAP (MMAP_VA_SIZE / PGSIZE)
 // static uint8 free_va_bitmap[MMAP_VA_BITMAP_CAP / 8] = { 0 };
@@ -533,19 +530,21 @@ uint64
 sys_mmap(void)
 {
   uint64 va;
-  int n_pages, prot, flags;
+  int size, n_pages, prot, flags;
 
   struct proc *p = myproc();
 
   argaddr(0, &va);
-  argint(1, &n_pages);
+  argint(1, &size);
   argint(2, &prot);
   argint(3, &flags);
 
   // POSIX says, so I follow
-  if (n_pages <= 0) return EINVAL;
-  if (!(flags & MAP_PRIVATE)) return EINVAL;
-  if (va % PGSIZE != 0) return EINVAL;
+  n_pages = size / PGSIZE;
+  if (!(flags & MAP_PRIVATE)) return MAP_FAILED;
+  if (size % PGSIZE != 0) return MAP_FAILED;
+  if (n_pages <= 0) return MAP_FAILED;
+  if (va % PGSIZE != 0) return MAP_FAILED;
 
   int perm = 0;
   perm |= PTE_U;
@@ -554,23 +553,34 @@ sys_mmap(void)
   if (prot & PROT_EXEC) perm |= PTE_X;
 
   // we do not allow mmap to map fixed allocations into our buddy allocator
-  if (flags & MAP_FIXED && va < MMAP_VA_BEGIN) {
+  if ((flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) && va < MMAP_VA_BEGIN) {
     return MAP_FAILED;
   }
 
+  // TODO: maybe do all this with a process lock, to prevent whacky stuff
+  // i.e. when passing MAP_FIXED_NOREPLACE
+
   // address hint points into buddy allocator region, search for another addr
-  if (!(flags & MAP_FIXED) || va == 0 || va < MMAP_VA_BEGIN) {
+  if (!(flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) || va == 0 || va < MMAP_VA_BEGIN) {
     va = mmap_find_space(p->pagetable, va, n_pages);
     if (va == -1) return MAP_FAILED;
   }
 
-  // check if the requested mapping region contains any non-user mappings
-  if (flags & MAP_FIXED) {
+  // checks for MAP_FIXED:
+  //    fail if there is a non user accessible page inside the requested region
+  // checks for MAP_FIXED_NOREPLACE:
+  //    fail if there is ANY already existing mapping in the requested region
+  if (flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) {
     for (int i = 0; i < n_pages; i++) {
       if (walkaddr(p->pagetable, va + i*PGSIZE)) {
-        pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
-        if (!(*pte & PTE_U))
+        if (flags & MAP_FIXED_NOREPLACE)
           return MAP_FAILED;
+        
+        if (flags & MAP_FIXED) {
+          pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
+          if (!(*pte & PTE_U))
+            return MAP_FAILED;
+        }
       }
     }
   }
@@ -589,11 +599,17 @@ sys_mmap(void)
     else if (flags & MAP_FIXED) {
       pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);
       *pte = *pte & ~0x3FF;
-      *pte |= perm | PTE_V | PTE_U;
+      *pte |= perm | PTE_V;
     }
     // va already mapped and no MAP_FIXED => what is going on
     else {
       panic("mmap unexpected remap");
+    }
+
+    if (!(flags & MAP_UNINITIALIZED)) {
+      void* pa = (void*) walkaddr(p->pagetable, va + i*PGSIZE);
+      if (pa == 0) panic("mmap wrong mapping");
+      memset(pa, 0, PGSIZE);
     }
   }
 
@@ -622,13 +638,15 @@ int
 sys_munmap(void)
 {
   uint64 addr;
-  int n_pages;
+  int size, n_pages;
 
   argaddr(0, &addr);
-  argint(1, &n_pages);
+  argint(1, &size);
 
-  if (addr % PGSIZE != 0) return EINVAL;
-  if (addr < MMAP_VA_BEGIN || addr >= MMAP_VA_END - n_pages * PGSIZE) return EINVAL;
+  if (size % PGSIZE != 0) return -1;
+  n_pages = size / PGSIZE;
+  if (addr % PGSIZE != 0) return -1;
+  if (addr < MMAP_VA_BEGIN || addr >= MMAP_VA_END - n_pages * PGSIZE) return -1;
 
   struct proc *p = myproc();
 
