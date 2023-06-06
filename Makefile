@@ -152,7 +152,7 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_cxxtest\
-	$U/_malloc_test\
+	$U/_my_malloc\
 	$U/_malloc_test_cxx\
 	$U/_terminate\
 
