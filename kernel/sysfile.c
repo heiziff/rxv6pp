@@ -530,6 +530,29 @@ mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages)
 uint
 bmap(struct inode *ip, uint bn);
 
+static void
+add_mapping(struct proc *p, uint64 va, int n_pages, int shared)
+{
+  // add the new mapping to proc struct
+  taken_list *entry = p->mmaped_pages;
+  while (entry->used) {
+    entry++;
+    if ((uint64)entry % PGSIZE == 0) {
+      if ((entry - 1)->next == 0) {
+        (entry - 1)->next = kalloc();
+        memset((entry - 1)->next, 0, PGSIZE);
+      }
+      
+      entry = (entry - 1)->next;
+    }
+  }
+
+  entry->va = va;
+  entry->n_pages = n_pages;
+  entry->used = 1;
+  entry->shared = shared;
+}
+
 uint64
 sys_mmap(void)
 {
@@ -602,7 +625,7 @@ sys_mmap(void)
 
     if (f->type != FD_INODE){
       panic("Help, no inode");
-      return 0;
+      return MAP_FAILED;
     }
 
     struct inode *node = f->ip;
@@ -611,7 +634,8 @@ sys_mmap(void)
 
     if (node->size < size){
       iunlock(node);
-      return 0;
+      printk("size unlucky\n");
+      return MAP_FAILED;
     }
 
     struct buf *cur_buf;
@@ -620,26 +644,35 @@ sys_mmap(void)
 
     for(int b_index = offset / BSIZE; b_index < n_pages; b_index++){
       uint disk_addr = bmap(node, b_index);
-      if(disk_addr == 0)
+      if (disk_addr == 0)
         break;
       cur_buf = bread(node->dev, disk_addr);
+      if (!cur_buf->valid)
+      {
+        printk("not even valid lol\n");
+        return MAP_FAILED;
+      }
 
       int n = size - bytes_read > BSIZE ? BSIZE : size - bytes_read;
       if (b_index == 0) n-=offset % BSIZE;
 
       // TODO: VA FINDUNG DAVOR MACHEN!
-      mappages(p->pagetable, va, n, (uint64) cur_buf->data, perm);
+      if (mappages(p->pagetable, va + (b_index - (offset / BSIZE)) * PGSIZE, n, (uint64)cur_buf->data, perm) < 0) {
+        panic("AHHHHHHHHHHHHHHHHHHHH");
+        return MAP_FAILED;
+      }
 
+      // TODO: need bytes_read??
+      bytes_read += n;
     }
-      
+
     iunlock(f->ip);
+    add_mapping(p, va, n_pages, 1);
 
     return va;
-
   }
 
   
-
   // we now have a valid va to work with, allocate physical memory and 
   // map va's to it
   for (int i = 0; i < n_pages; i++) {
@@ -668,25 +701,7 @@ sys_mmap(void)
     }
   }
 
-  // add the new mapping to proc struct
-  taken_list *entry = p->mmaped_pages;
-  while (entry->used) {
-    entry++;
-    if ((uint64)entry % PGSIZE == 0) {
-      if ((entry - 1)->next == 0) {
-        (entry - 1)->next = kalloc();
-        memset((entry - 1)->next, 0, PGSIZE);
-      }
-      
-      entry = (entry - 1)->next;
-    }
-  }
-
-  entry->va = va;
-  entry->n_pages = n_pages;
-  entry->used = 1;
-
-  
+  add_mapping(p, va, n_pages, 0);
 
   return va;
 }
@@ -711,6 +726,7 @@ sys_munmap(void)
     uint64 va = addr + i * PGSIZE;
     if (walkaddr(p->pagetable, va)) {
       pte_t *pte = walk(p->pagetable, va, 0);
+      // TODO: move shared mapping info to pagetable entry instead of taken list
       if (*pte & PTE_U)
         uvmunmap(p->pagetable, va, 1, 1);
     }

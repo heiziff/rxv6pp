@@ -21,7 +21,7 @@ struct buf {
   uint refcnt;
   struct buf *prev; // LRU cache list
   struct buf *next;
-  uchar data[BSIZE];
+  uchar *data;
 };
 
 

@@ -46,6 +46,7 @@ extern "C" {
 
 typedef struct taken_list_s {
   int used;
+  int shared;
   uint64 va;
   size_t n_pages;
   struct taken_list_s *next;
