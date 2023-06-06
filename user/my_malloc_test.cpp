@@ -21,9 +21,9 @@ int main(int argc, char**) {
     
 
     i = 0;
+    printf("An error is expected to occur here:\n");
     while (1) {
         void* ptr = malloc(1);
-        printf("An error is expected to occur here:\n");
         if (!ptr) break;
         i++;
     }
