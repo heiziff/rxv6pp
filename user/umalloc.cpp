@@ -121,9 +121,7 @@ static uint8_t *max_ptr;
  */
 static int update_max_ptr(uint8_t *new_value) {
   if (new_value > max_ptr) {
-    if (!sbrk(new_value - max_ptr)) {
-      return 0;
-    }
+    if (!sbrk(new_value - max_ptr)) { return 0; }
     max_ptr = new_value;
   }
   return 1;
@@ -145,10 +143,10 @@ static void list_init(list_t *list) {
  */
 static void list_push(list_t *list, list_t *entry) {
   list_t *prev = list->prev;
-  entry->prev = prev;
-  entry->next = list;
-  prev->next = entry;
-  list->prev = entry;
+  entry->prev  = prev;
+  entry->next  = list;
+  prev->next   = entry;
+  list->prev   = entry;
 }
 
 /*
@@ -160,8 +158,8 @@ static void list_push(list_t *list, list_t *entry) {
 static void list_remove(list_t *entry) {
   list_t *prev = entry->prev;
   list_t *next = entry->next;
-  prev->next = next;
-  next->prev = prev;
+  prev->next   = next;
+  next->prev   = prev;
 }
 
 /*
@@ -169,8 +167,7 @@ static void list_remove(list_t *entry) {
  */
 static list_t *list_pop(list_t *list) {
   list_t *back = list->prev;
-  if (back == list)
-    return NULL;
+  if (back == list) return NULL;
   list_remove(back);
   return back;
 }
@@ -215,7 +212,7 @@ static void flip_parent_is_split(size_t index) {
  */
 static size_t bucket_for_request(size_t request) {
   size_t bucket = BUCKET_COUNT - 1;
-  size_t size = MIN_ALLOC;
+  size_t size   = MIN_ALLOC;
 
   while (size < request) {
     bucket--;
@@ -257,9 +254,7 @@ static int lower_bucket_limit(size_t bucket) {
      * checked it above).
      */
     right_child = ptr_for_node(root + 1, bucket_limit);
-    if (!update_max_ptr(right_child + sizeof(list_t))) {
-      return 0;
-    }
+    if (!update_max_ptr(right_child + sizeof(list_t))) { return 0; }
     list_push(&buckets[bucket_limit], (list_t *)right_child);
     list_init(&buckets[--bucket_limit]);
 
@@ -268,17 +263,14 @@ static int lower_bucket_limit(size_t bucket) {
      * again, we'll know that the new root node we just added is in use.
      */
     root = (root - 1) / 2;
-    if (root != 0) {
-      flip_parent_is_split(root);
-    }
+    if (root != 0) { flip_parent_is_split(root); }
   }
 
   return 1;
 }
 
 void *malloc(uint32 request) {
-  if (request == 0)
-    return NULL;
+  if (request == 0) return NULL;
   size_t original_bucket, bucket;
 
   /*
@@ -286,9 +278,7 @@ void *malloc(uint32 request) {
    * a hard-coded limit on the maximum allocation size because of the way this
    * allocator works.
    */
-  if (request + HEADER_SIZE > MAX_ALLOC) {
-    return NULL;
-  }
+  if (request + HEADER_SIZE > MAX_ALLOC) { return NULL; }
 
   /*
    * Initialize our global state if this is the first call to "malloc". At the
@@ -315,7 +305,7 @@ void *malloc(uint32 request) {
    * Find the smallest bucket that will fit this request. This doesn't check
    * that there's space for the request yet.
    */
-  bucket = bucket_for_request(request + HEADER_SIZE);
+  bucket          = bucket_for_request(request + HEADER_SIZE);
   original_bucket = bucket;
 
   /*
@@ -331,9 +321,7 @@ void *malloc(uint32 request) {
      * We may need to grow the tree to be able to fit an allocation of this
      * size. Try to grow the tree and stop here if we can't.
      */
-    if (!lower_bucket_limit(bucket)) {
-      return NULL;
-    }
+    if (!lower_bucket_limit(bucket)) { return NULL; }
 
     /*
      * Try to pop a block off the free list for this bucket. If the free list
@@ -357,9 +345,7 @@ void *malloc(uint32 request) {
        * the SPLIT state and then add the new right child node to the free list
        * for this bucket. Popping the free list will give us this right child.
        */
-      if (!lower_bucket_limit(bucket - 1)) {
-        return NULL;
-      }
+      if (!lower_bucket_limit(bucket - 1)) { return NULL; }
       ptr = (uint8_t *)list_pop(&buckets[bucket]);
     }
 
@@ -367,7 +353,7 @@ void *malloc(uint32 request) {
      * Try to expand the address space first before going any further. If we
      * have run out of space, put this block back on the free list and fail.
      */
-    size = (size_t)1 << (MAX_ALLOC_LOG2 - bucket);
+    size         = (size_t)1 << (MAX_ALLOC_LOG2 - bucket);
     bytes_needed = bucket < original_bucket ? size / 2 + sizeof(list_t) : size;
     if (!update_max_ptr(ptr + bytes_needed)) {
       list_push(&buckets[bucket], (list_t *)ptr);
@@ -386,9 +372,7 @@ void *malloc(uint32 request) {
      * wouldn't ever have been split in the first place).
      */
     i = node_for_ptr(ptr, bucket);
-    if (i != 0) {
-      flip_parent_is_split(i);
-    }
+    if (i != 0) { flip_parent_is_split(i); }
 
     /*
      * If the node we got is larger than we need, split it down to the correct
@@ -416,25 +400,22 @@ void *malloc(uint32 request) {
 }
 
 void free(void *ptr) {
-  if (ptr == NULL)
-    return;
+  if (ptr == NULL) return;
   size_t bucket, i;
 
   /*
    * Ignore any attempts to free a NULL pointer.
    */
-  if (!ptr) {
-    return;
-  }
+  if (!ptr) { return; }
 
   /*
    * We were given the address returned by "malloc" so get back to the actual
    * address of the node by subtracting off the size of the block header. Then
    * look up the index of the node corresponding to this address.
    */
-  ptr = (uint8_t *)ptr - HEADER_SIZE;
+  ptr    = (uint8_t *)ptr - HEADER_SIZE;
   bucket = bucket_for_request(*(size_t *)ptr + HEADER_SIZE);
-  i = node_for_ptr((uint8_t *)ptr, bucket);
+  i      = node_for_ptr((uint8_t *)ptr, bucket);
 
   /*
    * Traverse up to the root node, flipping USED blocks to UNUSED and merging
@@ -457,9 +438,7 @@ void free(void *ptr) {
      * Also stop here if we're at the current root node, even if that root node
      * is now UNUSED. Root nodes don't have a buddy so we can't merge with one.
      */
-    if (parent_is_split(i) || bucket == bucket_limit) {
-      break;
-    }
+    if (parent_is_split(i) || bucket == bucket_limit) { break; }
 
     /*
      * If we get here, we know our buddy is UNUSED. In this case we should
@@ -490,8 +469,7 @@ void free(void *ptr) {
 block block_alloc(uint32_t size, uint32_t align) {
   block b = {0};
 
-  if (size == 0)
-    return b;
+  if (size == 0) return b;
 
   // To ensure we have enough space for the aligned block allocation, we request
   // the maximum amount of memory needed to fit the allocation + alignment
@@ -506,7 +484,7 @@ block block_alloc(uint32_t size, uint32_t align) {
   // }
 
   b.begin = ptr;
-  b.size = size;
+  b.size  = size;
   b.align = align;
 
   uint64 adr = (uint64)ptr;
@@ -518,31 +496,26 @@ block block_alloc(uint32_t size, uint32_t align) {
 
   // in case the bucket ptr is not already aligned to "align" we need to move
   // the begin of the block so it is aligned again.
-  if (align - (adr % align) < 0)
-    printf("OH OH!!!!\n");
+  if (align - (adr % align) < 0) printf("OH OH!!!!\n");
   b.begin = (void *)(adr + align - (adr % align));
-  if (size >= 4070 && align == 8)
-    printf("b3\n");
+  if (size >= 4070 && align == 8) printf("b3\n");
 
   return b;
 }
 
 void block_free(block b) {
-  if (b.begin == 0)
-    return;
+  if (b.begin == 0) return;
 
   // figure out which bucket size was used for the allocation
   uint32 allocated_size = b.size + b.align;
-  size_t bucket_idx = bucket_for_request(allocated_size + HEADER_SIZE);
-  if (bucket_idx + 1 == 0)
-    printf("panicc\n");
+  size_t bucket_idx     = bucket_for_request(allocated_size + HEADER_SIZE);
+  if (bucket_idx + 1 == 0) printf("panicc\n");
 
   // little hacky: we want to get from the begin ptr of the block to the begin
   // of its bucket. We can find the node index of the used bucket with the block
   // begin ptr and can then convert the node index back to the start ptr of the
   // bucket
-  void *bucket_ptr =
-      ptr_for_node(node_for_ptr((uint8 *)b.begin, bucket_idx), bucket_idx);
+  void *bucket_ptr = ptr_for_node(node_for_ptr((uint8 *)b.begin, bucket_idx), bucket_idx);
 
   // free takes the ptr to right after the header
   free((uint8 *)bucket_ptr + HEADER_SIZE);

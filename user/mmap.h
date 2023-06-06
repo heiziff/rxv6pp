@@ -3,4 +3,4 @@
 #ifdef MAP_FAILED
 #undef MAP_FAILED
 #endif
-#define MAP_FAILED ((void*)-1)
+#define MAP_FAILED ((void *)-1)

@@ -7,10 +7,9 @@
 #include "syscall.h"
 #include "defs.h"
 
-uint64 sys_hello_kernel(void)
-{
-    int num;
-    argint(0, &num);
-    pr_info("Hello Kernelspace, Group %d\n", num);
-    return 2;
+uint64 sys_hello_kernel(void) {
+  int num;
+  argint(0, &num);
+  pr_info("Hello Kernelspace, Group %d\n", num);
+  return 2;
 }

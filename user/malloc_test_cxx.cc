@@ -68,23 +68,23 @@ void test_balloc(void) {
   {
     auto foo = BALLOC(int, 1000);
     if (foo.begin) {
-        int *bar = static_cast<int*>(foo.begin);
-      int sum = bar[0] + bar[1];
-      (void) sum;
+      int *bar = static_cast<int *>(foo.begin);
+      int sum  = bar[0] + bar[1];
+      (void)sum;
       memset(foo.begin, 0, 20);
     }
     auto foo2 = BALLOC(int, 1000);
     if (foo2.begin) {
-        int *bar = static_cast<int*>(foo2.begin);
-      int sum = bar[0] + bar[1];
-      (void) sum;
+      int *bar = static_cast<int *>(foo2.begin);
+      int sum  = bar[0] + bar[1];
+      (void)sum;
       memset(foo2.begin, 0, 20);
     }
     auto foo3 = BALLOC(int, 1000);
     if (foo3.begin) {
-        int *bar = static_cast<int*>(foo3.begin);
-      int sum = bar[0] + bar[1];
-      (void) sum;
+      int *bar = static_cast<int *>(foo3.begin);
+      int sum  = bar[0] + bar[1];
+      (void)sum;
       memset(foo3.begin, 0, 20);
     }
     block_free(foo);
@@ -96,9 +96,9 @@ void test_balloc(void) {
     auto foo = block_alloc(1, 1024);
     printf("got ptr %p\n", foo.begin);
     if (foo.begin) {
-      int *bar = static_cast<int*>(foo.begin);
-      int sum = bar[0] + bar[1];
-      (void) sum;
+      int *bar = static_cast<int *>(foo.begin);
+      int sum  = bar[0] + bar[1];
+      (void)sum;
       memset(foo.begin, 0, 20);
     }
   }
@@ -107,9 +107,9 @@ void test_balloc(void) {
     auto foo = block_alloc(1, (1 << 13) - 1);
     printf("got ptr %p\n", foo.begin);
     if (foo.begin) {
-      int *bar = static_cast<int*>(foo.begin);
-      int sum = bar[0] + bar[1];
-      (void) sum;
+      int *bar = static_cast<int *>(foo.begin);
+      int sum  = bar[0] + bar[1];
+      (void)sum;
       memset(foo.begin, 0, 20);
     }
   }
