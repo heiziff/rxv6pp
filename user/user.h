@@ -41,6 +41,8 @@ int uptime(void);
 void* mmap(void*, int, int, int);
 void cxx(int);
 void term();
+int hello_kernel(int);
+int printPT(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

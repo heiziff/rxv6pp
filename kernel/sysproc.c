@@ -43,6 +43,13 @@ sys_sbrk(void)
 }
 
 uint64
+sys_printPT(void)
+{
+  print_pt(myproc()->pagetable , 3);
+  return 0;
+}
+
+uint64
 sys_sleep(void)
 {
   int n;

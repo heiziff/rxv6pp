@@ -24,6 +24,28 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+// scauses and their names according to
+// https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf
+// AMO = Atomic Memory Operation
+// Not mapped: Interrupt causes
+static char* scause_map[] = {
+[0]    "Instruction address misaligned",
+[1]    "Instruction address fault",
+[2]    "Illegal instruction",
+[3]    "Breakpoint",
+[4]    "Reserved",
+[5]    "Load access fault",
+[6]    "AMO address misalignd",
+[7]    "Store/AMO access fault",
+// 8, up to (and including) 11
+[8 ... 11]    "Reserved",
+[12]    "Instruction page fault",
+[13]    "Load page fault",
+[14]    "Reserved",
+[15]    "Store/AMO page fault",
+
+};
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -63,8 +85,11 @@ usertrap(void)
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
-    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+    pr_warning("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+    if (r_scause() < 16) {
+      pr_warning("            %s\n", scause_map[r_scause()]);
+    }
+    pr_warning("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     setkilled(p);
   }
 
@@ -140,8 +165,8 @@ kerneltrap()
     panic("kerneltrap: interrupts enabled");
 
   if((which_dev = devintr()) == 0){
-    printf("scause %p\n", scause);
-    printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
+    pr_emerg("scause %p\n", scause);
+    pr_emerg("sepc=%p stval=%p\n", r_sepc(), r_stval());
     panic("kerneltrap");
   }
 
@@ -186,7 +211,7 @@ devintr()
     } else if(irq == VIRTIO0_IRQ){
       virtio_disk_intr();
     } else if(irq){
-      printf("unexpected interrupt irq=%d\n", irq);
+      pr_notice("unexpected interrupt irq=%d\n", irq);
     }
 
     // the PLIC allows each device to raise at most one
