@@ -3,6 +3,8 @@
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
 
+#include "user/bmalloc.h"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -253,7 +255,7 @@ extern "C"
         // we can't grow the tree if the root is already at node 0
         if (root == 0)
             return 0;
-        
+
         size_t parent = GET_PARENT(root);
 
         // OPTION 1: Both children are empty:
@@ -319,7 +321,8 @@ extern "C"
     void *
     malloc(uint size)
     {
-        if (size == 0) return NULL;
+        if (size == 0)
+            return NULL;
 
         if (size + HEADER_SIZE > MAX_ALLOC_SIZE)
             return NULL;
@@ -381,7 +384,8 @@ extern "C"
                 break;
             }
 
-            if (current_bucket == 0 || current_bucket > (ssize_t)root_bucket_index) {
+            if (current_bucket == 0 || current_bucket > (ssize_t)root_bucket_index)
+            {
                 current_bucket--;
                 continue;
             }
@@ -429,8 +433,9 @@ extern "C"
     void
     free(void *ptr_to_free)
     {
-        if (ptr_to_free == NULL) return;
-        
+        if (ptr_to_free == NULL)
+            return;
+
         uint8 *ptr = (uint8 *)ptr_to_free;
         // Get header content
         uint64 alloc_size = *((uint64 *)(ptr - HEADER_SIZE));
@@ -461,13 +466,59 @@ extern "C"
             free_list_remove(
                 *(free_list_t *)node_to_ptr(GET_BUDDY(node_idx), bucket));
 
-
             bucket--;
             node_idx = parent;
         }
         free_list_push(buckets[bucket],
                        (free_list_t *)node_to_ptr(node_idx, bucket));
     }
+
+    // BEGIN BLOCK ALLOC IMPLEMENTATION
+
+    // We build a block allocation implementation on top of the buddy allocator used by malloc.
+    // This way we can reuse and even combine both allocation strategies and still have decent
+    // allocation speeds.
+    block
+    block_alloc(uint32 size, uint32 align)
+    {
+        block b;
+
+        // To ensure we have enough space for the aligned block allocation, we request the
+        // maximum amount of memory needed to fit the allocation + alignment
+        uint maximum_size_needed = size + align;
+        void *ptr = malloc(maximum_size_needed);
+
+        b.begin = ptr;
+        b.size = size;
+        b.align = align;
+
+        size_t adr = (size_t)ptr;
+        if (adr % align == 0)
+            return b;
+
+        // in case the bucket ptr is not already aligned to "align" we need to move the begin
+        // of the block so it is aligned again.
+        b.begin = (void *)(adr + align - (adr % align));
+        return b;
+    }
+
+    void
+    block_free(block b)
+    {
+        // figure out which bucket size was used for the allocation
+        uint allocated_size = b.size + b.align;
+        size_t bucket_idx = bucket_for_alloc_size(allocated_size + HEADER_SIZE);
+
+        // little hacky: we want to get from the begin ptr of the block to the begin of its
+        // bucket. We can find the node index of the used bucket with the block begin ptr
+        // and can then convert the node index back to the start ptr of the bucket
+        void *bucket_ptr = node_to_ptr(ptr_to_node((uint8 *)b.begin, bucket_idx), bucket_idx);
+
+        // free takes the ptr to right after the header
+        free((uint8 *)bucket_ptr + HEADER_SIZE);
+    }
+
+    // END BLOCK ALLOC IMPL
 
 #ifdef __cplusplus
 }
