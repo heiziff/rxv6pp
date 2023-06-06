@@ -473,6 +473,58 @@ static void add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
   entry->shared  = shared;
 }
 
+
+int sys_munmap_impl(uint64 addr, int size) {
+
+  if (size % PGSIZE != 0) return -1;
+  int n_pages = size / PGSIZE;
+  if (addr % PGSIZE != 0) return -1;
+  if (addr < MMAP_VA_BEGIN || addr >= MMAP_VA_END - n_pages * PGSIZE) return -1;
+
+  struct proc *p = myproc();
+
+  // Remove used flag from mappings in taken list
+  // TODO: Refactor add_mapping into two functions
+  taken_list *l = p->mmaped_pages;
+  while (1)
+  {
+    if (l->va == addr) 
+    {
+      l->used = 0;
+    }
+
+    l++;
+    if ((uint64)l % PGSIZE == 0) {
+      if ((l-1)->next == 0) break;
+      l = (l-1)->next;
+    }
+  }
+
+  for (int i = 0; i < n_pages; i++) {
+    uint64 va = addr + i * PGSIZE;
+    if (walkaddr(p->pagetable, va)) {
+      pte_t *pte = walk(p->pagetable, va, 0);
+
+      int phys_free = !(PTE_S & *pte);
+      // TODO: move shared mapping info to pagetable entry instead of taken list
+      if (*pte & PTE_U) uvmunmap(p->pagetable, va, 1, phys_free);
+    }
+  }
+
+  return 0;
+}
+
+int sys_munmap(void) {
+  uint64 addr;
+  int size;
+
+  argaddr(0, &addr);
+  argint(1, &size);
+  return sys_munmap_impl(addr, size);
+}
+
+
+
 uint64 sys_mmap(void) {
   uint64 va;
   int size, n_pages, prot, flags, fd, offset;
@@ -504,6 +556,7 @@ uint64 sys_mmap(void) {
   if (prot & PROT_READ) perm |= PTE_R;
   if (prot & PROT_WRITE) perm |= PTE_W;
   if (prot & PROT_EXEC) perm |= PTE_X;
+  if (flags & MAP_SHARED) perm |= PTE_S;
 
   // we do not allow mmap to map fixed allocations into our buddy allocator
   if ((flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) && (va < MMAP_VA_BEGIN || va >= MMAP_VA_END - n_pages)) {
@@ -532,6 +585,24 @@ uint64 sys_mmap(void) {
         if (flags & MAP_FIXED) {
           pte_t *pte = walk(p->pagetable, va + i * PGSIZE, 0);
           if (!(*pte & PTE_U)) return MAP_FAILED;
+
+          // Unmap old maybe overlapping mappings
+          taken_list *l = p->mmaped_pages;
+          while (1)
+          {
+            if (va >= l->va && va < l->va + l->n_pages * PAGE_SIZE){
+              sys_munmap_impl(l->va, l->n_pages * PAGE_SIZE);
+            } 
+            if (l->va >= va && l->va < va + n_pages * PAGE_SIZE){
+              sys_munmap_impl(l->va, l->n_pages * PAGE_SIZE);
+            }
+
+            l++;
+            if ((uint64)l % PGSIZE == 0) {
+              if ((l-1)->next == 0) break;
+              l = (l-1)->next;
+            }
+          }
         }
       }
     }
@@ -542,6 +613,8 @@ uint64 sys_mmap(void) {
   if (!(flags & MAP_ANON) && (flags & MAP_SHARED)) {
 
     if (fd < 0) return MAP_FAILED;
+
+    perm |= PTE_F;
 
     struct file *f = p->ofile[fd];
 
@@ -626,28 +699,4 @@ uint64 sys_mmap(void) {
   return va;
 }
 
-int sys_munmap(void) {
-  uint64 addr;
-  int size, n_pages;
 
-  argaddr(0, &addr);
-  argint(1, &size);
-
-  if (size % PGSIZE != 0) return -1;
-  n_pages = size / PGSIZE;
-  if (addr % PGSIZE != 0) return -1;
-  if (addr < MMAP_VA_BEGIN || addr >= MMAP_VA_END - n_pages * PGSIZE) return -1;
-
-  struct proc *p = myproc();
-
-  for (int i = 0; i < n_pages; i++) {
-    uint64 va = addr + i * PGSIZE;
-    if (walkaddr(p->pagetable, va)) {
-      pte_t *pte = walk(p->pagetable, va, 0);
-      // TODO: move shared mapping info to pagetable entry instead of taken list
-      if (*pte & PTE_U) uvmunmap(p->pagetable, va, 1, 1);
-    }
-  }
-
-  return 0;
-}

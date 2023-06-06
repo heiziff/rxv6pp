@@ -134,6 +134,7 @@ found:
 // p->lock must be held.
 static void freeproc(struct proc *p) {
   if (p->trapframe) kfree((void *)p->trapframe);
+  // TODO: free mmapped_pages pls :)
   p->trapframe = 0;
   if (p->pagetable) proc_freepagetable(p->pagetable, p->sz, p->mmaped_pages);
   p->pagetable = 0;
@@ -188,8 +189,10 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
   while (1) {
     if (entry->used) {
       for (int i = 0; i < entry->n_pages; i++) {
-        if (walkaddr(pagetable, entry->va + i * PGSIZE)) {
-          int free_phys = !entry->shared;
+        pte_t *pte = walk(pagetable, entry->va + i * PAGE_SIZE, 0);
+        if (pte == 0) continue;
+        if (*pte & PTE_V) {
+          int free_phys = !(*pte & PTE_S);
           uvmunmap(pagetable, entry->va + i * PGSIZE, 1, free_phys);
         }
       }
