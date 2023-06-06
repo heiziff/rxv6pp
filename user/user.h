@@ -16,9 +16,6 @@ extern "C" {
 #include "kernel/mmap.h"
 
 
-#define NULL ((void*)0)
-
-
 // system calls
 int fork(void);
 int exit(int) __attribute__((noreturn));
