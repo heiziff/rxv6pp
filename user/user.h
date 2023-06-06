@@ -10,6 +10,9 @@ extern "C" {
 #endif
 
 #include "kernel/stat.h"
+
+
+#define NULL ((void*)0)
 #include "kernel/mmap.h"
 
 
