@@ -12,6 +12,7 @@ extern "C" {
 #include "kernel/riscv.h"
 #include "kernel/param.h"
 #include "kernel/spinlock.h"
+#include "kernel/mmap.h"
 
 
 // Saved registers for kernel context switches.
@@ -114,6 +115,7 @@ struct proc {
   // these are private to the process, so p->lock need not be held.
   uint64 kstack;               // Virtual address of kernel stack
   uint64 sz;                   // Size of process memory (bytes)
+  taken_list *mmaped_pages;     // list of mmaped pages and their lengths
   pagetable_t pagetable;       // User page table
   struct trapframe *trapframe; // data page for trampoline.S
   struct context context;      // swtch() here to run process
