@@ -215,7 +215,6 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry)
     if (entry->used) {
       for (int i = 0; i < entry->n_pages; i++) {
         if (walkaddr(pagetable, entry->va + i*PGSIZE)) {
-          printf("free va %p\n", entry->va + i*PGSIZE);
           uvmunmap(pagetable, entry->va + i*PGSIZE, 1, 1);
         }
       }
