@@ -140,8 +140,8 @@ extern "C"
     buddy_node_exactly_one_child_used(size_t idx)
     {
         buddy_node_t node = buddy_nodes[idx];
-        bool_t left_used = node.state & LEFT_CHILD_USED;
-        bool_t right_used = node.state & RIGHT_CHILD_USED;
+        bool_t left_used = (node.state & LEFT_CHILD_USED) != 0;
+        bool_t right_used = (node.state & RIGHT_CHILD_USED) != 0;
 
         return left_used ^ right_used;
     }
@@ -153,8 +153,8 @@ extern "C"
     buddy_node_no_child_used(size_t idx)
     {
         buddy_node_t node = buddy_nodes[idx];
-        bool_t left_used = node.state & LEFT_CHILD_USED;
-        bool_t right_used = node.state & RIGHT_CHILD_USED;
+        bool_t left_used = (node.state & LEFT_CHILD_USED) != 0;
+        bool_t right_used = (node.state & RIGHT_CHILD_USED) != 0;
 
         return !(left_used & right_used);
     }
@@ -167,8 +167,8 @@ extern "C"
     buddy_node_both_child_used(size_t idx)
     {
         buddy_node_t node = buddy_nodes[idx];
-        bool_t left_used = node.state & LEFT_CHILD_USED;
-        bool_t right_used = node.state & RIGHT_CHILD_USED;
+        bool_t left_used = (node.state & LEFT_CHILD_USED) != 0;
+        bool_t right_used = (node.state & RIGHT_CHILD_USED) != 0;
 
         return left_used & right_used;
     }
@@ -223,7 +223,7 @@ extern "C"
     grow_heap_upto(uint8 *limit)
     {
         if (limit <= max_ptr)
-            return -1;
+            return 0;
 
         char *old = sbrk(limit - max_ptr);
         if (!old)
@@ -334,8 +334,10 @@ extern "C"
             base_ptr = (uint8 *)sbrk(0);
             if ((uint64)(base_ptr + HEADER_SIZE) & (PAGE_SIZE - 1))
             {
-                sbrk(PAGE_SIZE - ((uint64)base_ptr % PAGE_SIZE) - HEADER_SIZE);
+                printf("growing stack for malloc by: %d\n", PAGE_SIZE - ((uint64)base_ptr % PAGE_SIZE) - HEADER_SIZE);
+                char* old = sbrk(PAGE_SIZE - ((uint64)base_ptr % PAGE_SIZE) - HEADER_SIZE);
                 base_ptr = (uint8 *)sbrk(0);
+                printf("from old %p to %p\n", old, base_ptr);
             }
 
             max_ptr = base_ptr;
