@@ -12,7 +12,7 @@ extern "C"
 #define HEADER_SIZE 8
 
 #define MIN_ALLOC_SIZE_SHIFT 4
-#define MAX_ALLOC_SIZE_SHIFT 10
+#define MAX_ALLOC_SIZE_SHIFT 26
 
 // Min alloc size is 16 Byte and max alloc size is 64 MiB because max Memory is
 // 128 MiB
@@ -94,7 +94,7 @@ extern "C"
     /*
     Buckets to track free memory blocks of Zweierpotenzen.
     Entries in bucket at index zero have size of entire possible Adress space
-    (here 100 MiB) Buckets from bucket_index_limit to (BUCKET_AMOUNT - 1) are
+    (here MAX_ALLOC_SIZE MiB) Buckets from bucket_index_limit to (BUCKET_AMOUNT - 1) are
     populated, buckets at earlier indices are populated, when more memory is
     needed and the tree is grown.
     */
@@ -222,15 +222,12 @@ extern "C"
     int
     grow_heap_upto(uint8 *limit)
     {
-        // printf("GROW_HEAP_UPTO call with new limit %p\n", limit);
         if (limit <= max_ptr)
             return -1;
 
         char *old = sbrk(limit - max_ptr);
         if (!old)
             return -1;
-
-        // printf("Allocated from in grow_heap_upto: %p to %p\n\n", old, limit);
 
         max_ptr = limit;
         return 0;
@@ -247,18 +244,21 @@ extern "C"
     int
     grow_tree_upto(size_t rank)
     {
-        // printf("GROW_TREE_UPTO: call for rank %d\n", rank);
         if (rank < 0)
             return -1;
 
         // Root is always at base pointer
         size_t root = ptr_to_node(base_ptr, root_bucket_index);
+
+        // we can't grow the tree if the root is already at node 0
+        if (root == 0)
+            return 0;
+        
         size_t parent = GET_PARENT(root);
 
         // OPTION 1: Both children are empty:
         if (!buddy_node_get_bit(parent, LEFT_CHILD_USED))
         {
-            // printf("children unused\n");
             //  Increase size every time and add to parents freelist until we are at
             //  desired rank
             while (root_bucket_index > rank)
@@ -289,11 +289,9 @@ extern "C"
         // OPTION 2: Root is used! We can't merge and only insert right child
         else
         {
-            // printf("left child used\n");
             while (root_bucket_index > rank)
             {
                 uint8 *right_buddy = node_to_ptr(GET_BUDDY(root), root_bucket_index);
-                // printf("right buddy ptr = %p\n", right_buddy);
                 if (grow_heap_upto(right_buddy + sizeof(free_list_t)) < 0)
                     return -1;
 
@@ -321,8 +319,6 @@ extern "C"
     void *
     malloc(uint size)
     {
-        // printf("Got malloc request for %d or 0x%x\n", size, size);
-
         if (size + HEADER_SIZE > MAX_ALLOC_SIZE)
             return NULL;
 
@@ -337,14 +333,10 @@ extern "C"
 
             root_bucket_index = BUCKET_AMOUNT - 1;
 
-            // printf("Setting up at base: %p\n", base_ptr);
             grow_heap_upto(base_ptr + sizeof(free_list_t));
-            // printf("After heap grow: base %p, max %p\n", base_ptr, max_ptr);
 
             free_list_init(buckets[root_bucket_index]);
             free_list_push(buckets[root_bucket_index], (free_list_t *)base_ptr);
-
-            // printf("Finished init by pushing block of size %d\n", BUCKET_SIZE_FOR_INDEX(root_bucket_index));
         }
 
         // Find ideal bucket to fit our allocation, DON'T FORGET THAT HEADER!
@@ -354,13 +346,9 @@ extern "C"
         if (grow_tree_upto(ideal_bucket) != 0)
             return NULL;
 
-        // printf("Tree grown, max is: %d\n", root_bucket_index);
-
         // Early out, if bucket with ideal size has elements
         // Write allocated size into header
         uint8 *please = (uint8 *)free_list_pop(buckets[ideal_bucket]);
-
-        // printf("Trying to use bucket of size %d at %p\n", BUCKET_SIZE_FOR_INDEX(ideal_bucket), please);
 
         if (please != NULL)
         {
@@ -368,7 +356,6 @@ extern "C"
             size_t node = ptr_to_node(please, ideal_bucket);
             uint8 bitmask = node % 2 == 0 ? RIGHT_CHILD_USED : LEFT_CHILD_USED;
             buddy_node_flip_bit(GET_PARENT(node), bitmask);
-            // printf("Found ideally sized bucket at %p!\n\n", please + HEADER_SIZE);
             *((size_t *)please) = size;
             return please + HEADER_SIZE;
         }
@@ -377,13 +364,10 @@ extern "C"
         // Find free bucket
         // current bucket is the bucket in which the please block is found (hopefully)
         ssize_t current_bucket = ideal_bucket;
-        // printf("%d\n", sizeof(ssize_t));
         while (current_bucket >= 0)
         {
-            // printf("current bucket %d\n", current_bucket);
             if (grow_tree_upto(current_bucket) != 0)
             {
-                printf("aua\n");
                 return NULL;
             }
 
@@ -392,16 +376,13 @@ extern "C"
             // Get out if we found a bucket!
             if (please != NULL)
             {
-                printf("null\n");
                 break;
             }
 
             if (current_bucket == 0 || current_bucket > (ssize_t)root_bucket_index) {
                 current_bucket--;
-                printf("333\n");
                 continue;
             }
-            printf("161\n");
 
             if (grow_tree_upto(current_bucket - 1) != 0)
                 return NULL;
@@ -413,18 +394,14 @@ extern "C"
         // Not enough memory for allocation :(
         if (current_bucket < 0 || please == NULL)
         {
-            printf("Not enough memory\n");
+            printf("[ERROR] malloc: cannot allocate more memory\n");
             return NULL;
         }
-
-        // printf("Found free bucket at index %d\n", current_bucket);
 
         // Make sure, that there is enough space for at least the list entry of
         // current_bucket right child, as he will be added to the free list, while
         // we continue down the left children
         grow_heap_upto(please + BUCKET_SIZE_FOR_INDEX(current_bucket + 1) + sizeof(free_list_t));
-
-        // printf("Allocated new space upto %p\n", max_ptr);
 
         // Now split larger bucket until we small space
         while (current_bucket < ideal_bucket)
@@ -443,7 +420,6 @@ extern "C"
 
         // Found block, write size and return correct adress, offset by header
         *((size_t *)please) = (size_t)size;
-        // printf("Finished malloc: Returning %p", please + HEADER_SIZE);
 
         return please + HEADER_SIZE;
     }
@@ -451,7 +427,6 @@ extern "C"
     void
     free(void *ptr_to_free)
     {
-        // printf("Calling free for %p\n", ptr_to_free);
         uint8 *ptr = (uint8 *)ptr_to_free;
         // Get header content
         uint64 alloc_size = *((uint64 *)(ptr - HEADER_SIZE));
@@ -460,18 +435,12 @@ extern "C"
         size_t bucket = bucket_for_alloc_size(alloc_size + HEADER_SIZE);
         size_t node_idx = ptr_to_node(ptr, bucket);
 
-        // printf("Determinded to free bucket as %d\n", bucket);
-
         while (bucket > root_bucket_index)
         {
             size_t parent = GET_PARENT(node_idx);
-            // printf("Going to parent %d for merge\n", parent);
 
             // Check if we are left or right child based on our index
             uint8 bitmask = node_idx % 2 == 0 ? RIGHT_CHILD_USED : LEFT_CHILD_USED;
-
-            // printf("We are %d child\n", node_idx % 2);
-
             buddy_node_flip_bit(parent, bitmask);
 
             // we are unused, so if buddy is used then we cannot merge and are done
@@ -479,7 +448,6 @@ extern "C"
             {
                 free_list_push(buckets[bucket],
                                (free_list_t *)node_to_ptr(node_idx, bucket));
-                // printf("Buddy is used, pushing %p!!!!\n", node_to_ptr(node_idx, bucket));
                 return;
             }
 
@@ -489,14 +457,12 @@ extern "C"
             free_list_remove(
                 *(free_list_t *)node_to_ptr(GET_BUDDY(node_idx), bucket));
 
-            // printf("Removing our buddy at bucket %d because we are both free is free\n", bucket);
 
             bucket--;
             node_idx = parent;
         }
         free_list_push(buckets[bucket],
                        (free_list_t *)node_to_ptr(node_idx, bucket));
-        // printf("Finished free call and pushed %p at bucket %d\n", node_to_ptr(node_idx, bucket), bucket);
     }
 
 #ifdef __cplusplus
