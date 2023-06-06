@@ -38,24 +38,31 @@ typedef struct free_list_s {
 } free_list_t;
 
 void
-free_list_init(free_list_t *list)
+free_list_init(free_list_t &list)
 {
-    list->next = list;
-    list->prev = list;
+    list.next = &list;
+    list.prev = &list;
 }
 
 void
-free_list_push(free_list_t *&list, free_list_t *element)
+free_list_push(free_list_t &list, free_list_t *element)
 {
-    free_list_t *last = list->prev;
+    free_list_t *last = list.prev;
 
-    element->next = list;
+    element->next = &list;
     element->prev = last;
 
-    list->prev = element;
+    list.prev = element;
 
     last->next = element;
 
+}
+
+void
+free_list_remove(free_list_t &element)
+{
+    element.prev->next = element.next;
+    element.next->prev = element.prev;
 }
 
 free_list_t*
@@ -68,16 +75,11 @@ free_list_pop(free_list_t &list)
     return last;
 }
 
-void
-free_list_remove(free_list_t &element)
-{
-    element.prev->next = element.next;
-    element.next->prev = element.prev;
-}
+
 
 
 /*
-Struct to keep track of binary tree
+Struct to keep track of binary tree. Parents save information on Children
 */
 typedef struct buddy_node_s
 {
@@ -88,6 +90,25 @@ static buddy_node_t buddy_nodes[1 << (BUCKET_AMOUNT - 1)];
 
 #define LEFT_CHILD_USED 0x1
 #define RIGHT_CHILD_USED 0x2
+
+#define GET_PARENT(IDX) ((IDX-1)/2)
+#define GET_LEFT_CHILD(IDX) (2*IDX + 1)
+#define GET_RIGHT_CHILD(IDX) (2*IDX + 2)
+
+#define GET_BUDDY(IDX) (IDX + 1)
+
+bool_t
+buddy_node_get_bit(size_t idx, uint8 bitmask)
+{
+    return (buddy_nodes[idx].state & bitmask != 0);
+}
+
+void
+buddy_node_flip_bit(size_t idx, uint8 bitmask)
+{
+    buddy_nodes[idx].state ^= bitmask;
+}
+
 
 bool_t
 buddy_node_exactly_one_child_used(size_t idx)
@@ -138,9 +159,25 @@ ptr_to_node(uint8* ptr, size_t bucket_idx)
     return ((1 << bucket_idx) - 1) + local_idx;
 }
 
+size_t
+bucket_for_alloc_size(size_t alloc_size)
+{
+    size_t bucket = BUCKET_AMOUNT -1;
+    size_t bucket_size = MIN_ALLOC_SIZE;
+
+    while(bucket_size < alloc_size)
+    {
+        if (bucket == 0) return -1;
+        bucket_size *= 2;
+        bucket--;
+    }
+
+    return bucket;
+}
+
 
 // To not immediately allocate/devide entire Adress-space, start with small limit and then grow it, as is needed
-static size_t bucket_index_limit;
+static size_t root_bucket_index;
 
 /*
 Buckets to track free memory blocks of Zweierpotenzen.
@@ -156,6 +193,9 @@ static uint8 *base_ptr;
 static uint8 *max_ptr;
 
 
+/*
+Ask the OS to grow memory up to specific pointer location.
+*/
 int
 grow_heap_upto(uint8* limit)
 {
@@ -164,6 +204,79 @@ grow_heap_upto(uint8* limit)
 
     max_ptr = limit;
     return 0;
+}
+
+
+
+/*
+Attempts to grow binary tree. Two options: 
+1.  Both children are empty -> grow and merge and insert parent into freelist
+2.  Left child has memory allocated -> grow and only insert right child into freelist
+
+CALLER HAS TO VERIFY VALIDITY OF PARAMETER "rank"
+*/
+int
+grow_tree_upto(size_t rank)
+{
+    if (rank < 0) return -1;
+
+    // Root is always at base pointer
+    size_t root = ptr_to_node(base_ptr, root_bucket_index);
+    size_t parent = GET_PARENT(root);
+
+    // OPTION 1: Both children are empty:
+    if (!buddy_node_get_bit(parent, LEFT_CHILD_USED))
+    {
+        // Increase size every time and add to parents freelist until we are at desired rank
+        while (root_bucket_index > rank)
+        {
+            // Parent has its right child used bit initialized to 0. No need to set roots brother to unused
+
+            // Since root unused, it is only entry in highest rank of freelist. We can safely pop here
+            free_list_pop(buckets[root_bucket_index]);
+
+            // New root index is now one smaller.
+            root_bucket_index--;
+
+            // Insert new freelist entry to parent
+            free_list_init(buckets[root_bucket_index]);
+            free_list_push(buckets[root_bucket_index], (free_list_t*) base_ptr);
+
+            // Get new values for root and parent
+            root = ptr_to_node(base_ptr, root_bucket_index);
+            parent = GET_PARENT(root);
+ 
+        }
+
+        return 0;
+
+    }
+
+    // OPTION 2: Root is used! We can't merge and only insert right child
+    else
+    {
+        while (root_bucket_index > rank)
+        {
+            uint8 *right_buddy = node_to_ptr(GET_BUDDY(root), root_bucket_index);
+            if(!grow_heap_upto(right_buddy + sizeof(free_list_t))) return -1;
+
+            free_list_t *right_buddy_list = (free_list_t*) right_buddy;
+            free_list_push(buckets[root_bucket_index], right_buddy_list);
+
+            root_bucket_index--;
+
+            root = ptr_to_node(base_ptr, root_bucket_index);
+            parent = GET_PARENT(root);
+
+            if (root != 0)
+            {
+                buddy_node_flip_bit(parent, LEFT_CHILD_USED);
+            }
+        }
+
+    }
+    //Check if parent has children, that are used (aka us :D)
+
 }
 
 
