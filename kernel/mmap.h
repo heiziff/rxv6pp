@@ -50,7 +50,7 @@ typedef struct taken_list_s {
   int used;
   int shared;
   uint64 va;
-  struct file *f;
+  struct file *file;
   size_t n_pages;
   struct taken_list_s *next;
 

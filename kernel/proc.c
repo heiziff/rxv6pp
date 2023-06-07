@@ -188,12 +188,28 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
 
   while (1) {
     if (entry->used) {
+
+      // Check if page has mapped file and update mapped_count
+      int still_shared = 0;
+      pte_t *pte = walk(pagetable, entry->va, 0);
+      if (PTE_S & *pte && PTE_F & *pte) {
+        entry->file->mapped_count--;
+        still_shared = entry->file->mapped_count >= 1 ? 1 : 0;
+      }
+
       for (int i = 0; i < entry->n_pages; i++) {
         pte_t *pte = walk(pagetable, entry->va + i * PAGE_SIZE, 0);
         if (pte == 0) continue;
-        if (*pte & PTE_V) {
-          int free_phys = !(*pte & PTE_S);
-          uvmunmap(pagetable, entry->va + i * PGSIZE, 1, free_phys);
+        if (*pte != 0 && *pte & PTE_V) {
+          if (!(*pte & PTE_U)) continue;
+
+          if(PTE_S & *pte && ! (PTE_F & *pte)) {
+            panic("TODO");
+            return;
+          }
+
+          printk("OOk, unmapping %p and is shared %d\n", entry->va + i* PGSIZE, still_shared);
+          uvmunmap(pagetable, entry->va + i * PGSIZE, 1, !still_shared);
         }
       }
     }

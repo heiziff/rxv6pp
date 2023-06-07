@@ -30,14 +30,17 @@ void main() {
   int pid = fork();
   if (pid > 0) // parent
   {
+    void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
     int keine_ahnung;
     if (wait(&keine_ahnung) < 0) {
       printf("HÄ?\n");
       assert(0);
       return;
     }
+    printf("starting parent stuff\n");
 
-    void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
+    printf("mapped %p\n", va);
+    printf("str: \"%s\"", (char *)va);
     assert(strcmp((char *)va, string2) == 0);
     memset(va, 'A', 15);
     assert(strcmp((char *)va, string3) == 0);
@@ -47,12 +50,16 @@ void main() {
 
   } else if (pid == 0) // child
   {
+    for (int i = 0; i < 1000000; i++)
+      ;
     void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
+    printf("child: %p\n", va);
     assert(strcmp((char *)va, string) == 0);
 
     memset((char *)va + 15, 'B', 15);
     assert(strcmp((char *)va, string2) == 0);
     close(fd);
+    printf("child done\n");
     exit(0);
   } else {
     printf("dod weil fork\n");

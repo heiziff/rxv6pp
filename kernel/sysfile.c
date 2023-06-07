@@ -54,6 +54,10 @@ uint64 sys_read(void) {
   argaddr(1, &p);
   argint(2, &n);
   if (argfd(0, 0, &f) < 0) return -1;
+
+  // Can't read if file is mmapped
+  if (f->mapped_count) return -1;
+
   return fileread(f, p, n);
 }
 
@@ -65,6 +69,9 @@ uint64 sys_write(void) {
   argaddr(1, &p);
   argint(2, &n);
   if (argfd(0, 0, &f) < 0) return -1;
+
+  // Can't write if file is mmapped
+  if (f->mapped_count) return -1;
 
   return filewrite(f, p, n);
 }
@@ -452,7 +459,7 @@ uint64 mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages) {
 
 uint bmap(struct inode *ip, uint bn);
 
-static void add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
+static taken_list* add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
   // add the new mapping to proc struct
   taken_list *entry = p->mmaped_pages;
   while (entry->used) {
@@ -471,6 +478,8 @@ static void add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
   entry->n_pages = n_pages;
   entry->used    = 1;
   entry->shared  = shared;
+
+  return entry;
 }
 
 
@@ -488,26 +497,35 @@ int sys_munmap_impl(uint64 addr, int size) {
   taken_list *l = p->mmaped_pages;
   while (1)
   {
-    if (l->va == addr) 
+    if (l->va == addr && l->used) 
     {
       l->used = 0;
+      break;
     }
 
     l++;
     if ((uint64)l % PGSIZE == 0) {
-      if ((l-1)->next == 0) break;
+      if ((l-1)->next == 0) {
+        printk(" munmap: invalid address");
+        return -1;
+      };
       l = (l-1)->next;
     }
   }
 
   for (int i = 0; i < n_pages; i++) {
     uint64 va = addr + i * PGSIZE;
-    if (walkaddr(p->pagetable, va)) {
-      pte_t *pte = walk(p->pagetable, va, 0);
+    pte_t *pte = walk(p->pagetable, va, 0);
+    if (*pte != 0 && *pte & PTE_V) {
+      if (!(*pte & PTE_U)) continue;
 
-      int phys_free = !(PTE_S & *pte);
-      // TODO: move shared mapping info to pagetable entry instead of taken list
-      if (*pte & PTE_U) uvmunmap(p->pagetable, va, 1, phys_free);
+      int still_shared = 0;
+      if (PTE_S & *pte && PTE_F & *pte) {
+        still_shared = l->file->mapped_count > 1 ? 1 : 0;
+        if (i == 0) l->file->mapped_count--;
+      }
+
+      uvmunmap(p->pagetable, va, 1, !still_shared);
     }
   }
 
@@ -524,7 +542,7 @@ int sys_munmap(void) {
 }
 
 
-
+// TODO: shared mappings refcount tracken x)
 uint64 sys_mmap(void) {
   uint64 va;
   int size, n_pages, prot, flags, fd, offset;
@@ -593,7 +611,7 @@ uint64 sys_mmap(void) {
             if (va >= l->va && va < l->va + l->n_pages * PAGE_SIZE){
               sys_munmap_impl(l->va, l->n_pages * PAGE_SIZE);
             } 
-            if (l->va >= va && l->va < va + n_pages * PAGE_SIZE){
+            else if (l->va >= va && l->va < va + n_pages * PAGE_SIZE){
               sys_munmap_impl(l->va, l->n_pages * PAGE_SIZE);
             }
 
@@ -662,7 +680,13 @@ uint64 sys_mmap(void) {
     }
 
     iunlock(f->ip);
-    add_mapping(p, va, n_pages, 1);
+    taken_list *l_entry = add_mapping(p, va, n_pages, 1);
+
+    l_entry->file = f;
+
+    // TODO: RACE ME TO THE MOON
+    f->mapped_count++;
+    printk("mapped count %d\n", f->mapped_count);
 
     return va;
   }
