@@ -482,11 +482,31 @@ static taken_list* add_mapping(struct proc *p, uint64 va, int n_pages, int share
   return entry;
 }
 
+void dump_taken_list(taken_list *list) {
+  printk("-TAKEN LIST DUMP: ---------------------------------\n");
+  do {
+    if (list->used) {
+      printk(" Used ntry: va=%p, n_pages=%d, file=%p, shared=%d\n", list->va, list->n_pages, list->file, list->shared);
+    }
+    else {
+      printk(" Unused entry: %p\n", list->va);
+    }
+    list++;
+    if ((uint64) list % PGSIZE == 0) {
+      list = (list - 1)->next;
+      printk(" At page end with next %p!\n", list);
+    }
+
+  } while ((list - 1)->next != 0);
+  printk("-DUMP END ---------------------------------\n");
+}
+
 
 int sys_munmap_impl(uint64 addr, int size) {
 
   if (size % PGSIZE != 0) return -1;
-  int n_pages = size / PGSIZE;
+  int n_pages = (size - 1) / PGSIZE + 1;
+  printk(" MUNMAP: Called with %p and %d bytes -> %d pages\n", addr, size, n_pages);
   if (addr % PGSIZE != 0) return -1;
   if (addr < MMAP_VA_BEGIN || addr >= MMAP_VA_END - n_pages * PGSIZE) return -1;
 
@@ -506,7 +526,7 @@ int sys_munmap_impl(uint64 addr, int size) {
     l++;
     if ((uint64)l % PGSIZE == 0) {
       if ((l-1)->next == 0) {
-        printk(" munmap: invalid address");
+        printk(" MUNMAP: invalid address");
         return -1;
       };
       l = (l-1)->next;
@@ -521,6 +541,7 @@ int sys_munmap_impl(uint64 addr, int size) {
 
       int still_shared = 0;
       if (PTE_S & *pte && PTE_F & *pte) {
+        printk(" MUNMAP: mapped_count on page %d is %d", i, l->file->mapped_count);
         still_shared = l->file->mapped_count > 1 ? 1 : 0;
         if (i == 0) l->file->mapped_count--;
       }
@@ -548,6 +569,8 @@ uint64 sys_mmap(void) {
   int size, n_pages, prot, flags, fd, offset;
 
   struct proc *p = myproc();
+
+  dump_taken_list(p->mmaped_pages);
 
   argaddr(0, &va);
   argint(1, &size);
@@ -649,7 +672,7 @@ uint64 sys_mmap(void) {
 
     if (node->size < size) {
       iunlock(node);
-      printk("size unlucky\n");
+      printk(" MMAP: size unlucky\n");
       return MAP_FAILED;
     }
 
@@ -662,7 +685,7 @@ uint64 sys_mmap(void) {
       if (disk_addr == 0) break;
       cur_buf = bread(node->dev, disk_addr);
       if (!cur_buf->valid) {
-        printk("not even valid lol\n");
+        printk(" MMAP: not even valid lol\n");
         return MAP_FAILED;
       }
 
@@ -686,7 +709,9 @@ uint64 sys_mmap(void) {
 
     // TODO: RACE ME TO THE MOON
     f->mapped_count++;
-    printk("mapped count %d\n", f->mapped_count);
+    printk(" MMAP: mapped count %d\n", f->mapped_count);
+
+    dump_taken_list(p->mmaped_pages);
 
     return va;
   }

@@ -8,7 +8,7 @@
 #include <kernel/fcntl.h>
 
 void main() {
-  int fd = open("tes_t.txt", O_CREATE | O_RDWR);
+  int fd = open("tes_tttt.txt", O_CREATE | O_RDWR);
   if (fd < 0) {
     printf("rip\n");
     return;
@@ -24,11 +24,14 @@ void main() {
   }
 
   close(fd);
+  printf("closing initial fd\n");
 
 
   int pid = fork();
+  printf("Forked!\n");
   if (pid > 0) // parent
   {
+    printf("Starting parent\n");
     int keine_ahnung;
     if (wait(&keine_ahnung) < 0) {
       printf("HÄ?\n");
@@ -36,19 +39,23 @@ void main() {
       return;
     }
 
-    fd       = open("tes_t.txt", O_RDONLY);
+    fd       = open("tes_tttt.txt", O_RDONLY);
     void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
     assert(strcmp((char *)va, string2) == 0);
     memset(va, 'A', 15);
     assert(strcmp((char *)va, string3) == 0);
     close(fd);
 
-    assert(!unlink("tes_t.txt"));
+    assert(!unlink("tes_tttt.txt"));
 
   } else if (pid == 0) // child
   {
-    fd       = open("tes_t.txt", O_RDONLY);
+    printf("Starting child\n");
+    fd       = open("tes_tttt.txt", O_RDONLY);
+    assert(fd > 0);
+    printf("Opened in child\n");
     void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
+    printf("Got after child mmap\n");
     assert(strcmp((char *)va, string) == 0);
 
     memset((char *)va + 15, 'B', 15);

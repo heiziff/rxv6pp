@@ -187,7 +187,11 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
 
   while (1) {
+    //printk(" PROC_FREEPGTBL: Spinning at %p\n", entry);
     if (entry->used) {
+      printk(" PROC_FREEPGTBL: found used entry at %p\n", entry);
+
+      entry->used = 0;
 
       // Check if page has mapped file and update mapped_count
       int still_shared = 0;
@@ -208,7 +212,7 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
             return;
           }
 
-          printk("OOk, unmapping %p and is shared %d\n", entry->va + i* PGSIZE, still_shared);
+          printk(" PROC_FREEPGTBL: unmapping %p and is shared %d\n", entry->va + i* PGSIZE, still_shared);
           uvmunmap(pagetable, entry->va + i * PGSIZE, 1, !still_shared);
         }
       }
@@ -220,8 +224,9 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
       entry = (entry - 1)->next;
     }
   }
-
+  printk(" PROC_FREEPGTBL: Done freeing mmapped\n");
   uvmfree(pagetable, sz);
+  printk(" PROC_FREEPGTBL: Done uvmfree\n");
 }
 
 // a user program that calls exec("/init")
@@ -288,6 +293,7 @@ int fork(void) {
     release(&np->lock);
     return -1;
   }
+  printk(" FORK: Finished copying user memory\n");
   np->sz = p->sz;
 
   // copy saved user registers.
@@ -300,6 +306,7 @@ int fork(void) {
   for (i = 0; i < NOFILE; i++)
     if (p->ofile[i]) np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
+  printk(" FORK: Finished incrementing reference counters\n");
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
@@ -314,6 +321,8 @@ int fork(void) {
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
+
+  printk(" FORK: Done!\n");
 
   return pid;
 }

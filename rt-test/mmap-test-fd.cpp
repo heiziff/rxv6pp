@@ -30,6 +30,7 @@ void main() {
   int pid = fork();
   if (pid > 0) // parent
   {
+    printf("starting parent!\n");
     void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
     int keine_ahnung;
     if (wait(&keine_ahnung) < 0) {
@@ -37,7 +38,6 @@ void main() {
       assert(0);
       return;
     }
-    printf("starting parent stuff\n");
 
     printf("mapped %p\n", va);
     printf("str: \"%s\"", (char *)va);
@@ -45,6 +45,8 @@ void main() {
     memset(va, 'A', 15);
     assert(strcmp((char *)va, string3) == 0);
     close(fd);
+
+    assert(munmap(va, 4096) == 0);
 
     assert(!unlink("tes_t.txt"));
 
@@ -60,6 +62,7 @@ void main() {
     assert(strcmp((char *)va, string2) == 0);
     close(fd);
     printf("child done\n");
+    assert(munmap(va, 4096) == 0);
     exit(0);
   } else {
     printf("dod weil fork\n");

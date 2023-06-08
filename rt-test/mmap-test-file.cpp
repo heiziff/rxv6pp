@@ -8,7 +8,7 @@
 #include <kernel/fcntl.h>
 
 void main() {
-  int fd = open("tes_t.txt", O_CREATE | O_RDWR);
+  int fd = open("tes", O_CREATE | O_RDWR);
   if (fd < 0) {
     printf("rip\n");
     return;
@@ -21,7 +21,7 @@ void main() {
   }
 
   close(fd);
-  fd = open("tes_t.txt", O_RDONLY);
+  fd = open("tes", O_RDONLY);
 
   void *va = mmap((void *)0, strlen(string) + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
@@ -34,7 +34,7 @@ void main() {
   memset(string2, 'A', 2 * 4096 + 1);
   string2[2 * 4096 + 1] = 0;
 
-  fd = open("tes_t2.txt", O_CREATE | O_RDWR);
+  fd = open("tes", O_CREATE | O_RDWR);
   if (fd < 0) {
     printf("rip\n");
     return;
@@ -46,7 +46,7 @@ void main() {
   }
 
   close(fd);
-  fd = open("tes_t2.txt", O_RDONLY);
+  fd = open("tes2", O_RDONLY);
 
   va = mmap((void *)0, strlen(string2) + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
@@ -59,12 +59,12 @@ void main() {
   char test_buf[] = "AAAABBBB";
   char result[]   = "AAAA";
 
-  fd = open("tes_t.txt", O_CREATE | O_RDWR);
+  fd = open("tes", O_CREATE | O_RDWR);
   if (fd < 0) printf("rip\n");
 
   write(fd, test_buf, strlen(test_buf) + 1);
   close(fd);
-  fd = open("tes_t.txt", O_RDONLY);
+  fd = open("tes", O_RDONLY);
 
   va              = mmap((void *)0, 5, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   ((char *)va)[4] = 0;
@@ -73,6 +73,6 @@ void main() {
   munmap(va, 4);
   close(fd);
 
-  assert(!unlink("tes_t.txt"));
-  assert(!unlink("tes_t2.txt"));
+  assert(!unlink("tes"));
+  assert(!unlink("tes2"));
 }
