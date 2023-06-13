@@ -8,24 +8,27 @@
 #include <kernel/fcntl.h>
 
 void main() {
-  int fd = open("tes_tttt.txt", O_CREATE | O_RDWR);
-  if (fd < 0) {
-    printf("rip\n");
-    return;
-  }
+  printf("start\n");
+  int fd = open("mmap-fd2.txt", O_CREATE | O_RDWR);
+  assert(fd > 0);
 
   char string[]  = "Halo ich mag mmap seeehr dolll";
   char string2[] = "Halo ich mag mmBBBBBBBBBBBBBBB";
   char string3[] = "AAAAAAAAAAAAAAABBBBBBBBBBBBBBB";
   int size       = strlen(string) + 1;
-  if (write(fd, string, strlen(string) + 1) != (int)strlen(string) + 1) {
+  if (write(fd, string, size) != size) {
     printf("write failed\n");
     return;
   }
+  printf("wrote\n");
 
   close(fd);
   printf("closing initial fd\n");
 
+  fd       = open("mmap-fd2.txt", O_RDONLY);
+  assert(fd > 0);
+  void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
+  close(fd);
 
   int pid = fork();
   printf("Forked!\n");
@@ -39,28 +42,19 @@ void main() {
       return;
     }
 
-    fd       = open("tes_tttt.txt", O_RDONLY);
-    void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
     assert(strcmp((char *)va, string2) == 0);
     memset(va, 'A', 15);
     assert(strcmp((char *)va, string3) == 0);
-    close(fd);
 
-    assert(!unlink("tes_tttt.txt"));
+    assert(!unlink("mmap-fd2.txt"));
 
   } else if (pid == 0) // child
   {
     printf("Starting child\n");
-    fd       = open("tes_tttt.txt", O_RDONLY);
-    assert(fd > 0);
-    printf("Opened in child\n");
-    void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
-    printf("Got after child mmap\n");
     assert(strcmp((char *)va, string) == 0);
 
     memset((char *)va + 15, 'B', 15);
     assert(strcmp((char *)va, string2) == 0);
-    close(fd);
     exit(0);
   } else {
     printf("dod weil fork\n");

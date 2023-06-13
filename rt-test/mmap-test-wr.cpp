@@ -8,7 +8,7 @@
 #include <kernel/fcntl.h>
 
 void main() {
-    int fd = open("tes_t", O_CREATE | O_RDWR);
+    int fd = open("mmap-wr.txt", O_CREATE | O_RDWR);
     assert(fd > 0);
 
     char content[] = "rasant";
@@ -18,7 +18,7 @@ void main() {
     assert(w_res == size);
 
     close(fd);
-    fd = open("tes_t", O_RDWR);
+    fd = open("mmap-wr.txt", O_RDWR);
 
     void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
 
@@ -35,11 +35,12 @@ void main() {
     munmap(va, size);
 
     close(fd);
-    fd = open("tes_t", O_RDONLY);
+    fd = open("mmap-wr.txt", O_RDONLY);
 
     count = read(fd, buf, size);
 
     // Check if reading was possible
+    printf("Count=%d", count);
     assert(count > 0);
 
     // Check for correct content

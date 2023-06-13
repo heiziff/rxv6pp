@@ -8,31 +8,26 @@
 #include <kernel/fcntl.h>
 
 void main() {
-  int fd = open("tes_t.txt", O_CREATE | O_RDWR);
-  if (fd < 0) {
-    printf("rip\n");
-    return;
-  }
+  int fd = open("mmap-fd.txt", O_CREATE | O_RDWR);
+  assert(fd > 0);
 
   char string[]  = "Halo ich mag mmap seeehr dolll";
   char string2[] = "Halo ich mag mmBBBBBBBBBBBBBBB";
   char string3[] = "AAAAAAAAAAAAAAABBBBBBBBBBBBBBB";
   int size       = strlen(string) + 1;
-  if (write(fd, string, strlen(string) + 1) != (int)strlen(string) + 1) {
-    printf("write failed\n");
-    return;
-  }
+  assert(write(fd, string, size) == size);
 
   close(fd);
 
-  fd = open("tes_t.txt", O_RDONLY);
+  fd = open("mmap-fd.txt", O_RDONLY);
 
   int pid = fork();
   if (pid > 0) // parent
   {
     printf("starting parent!\n");
     void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
-    int keine_ahnung;
+    assert ((uint64) va != MAP_FAILED);
+    int keine_ahnung = 0;
     if (wait(&keine_ahnung) < 0) {
       printf("HÄ?\n");
       assert(0);
@@ -40,7 +35,7 @@ void main() {
     }
 
     printf("mapped %p\n", va);
-    printf("str: \"%s\"", (char *)va);
+    printf("str: \"%s\"\n", (char *)va);
     assert(strcmp((char *)va, string2) == 0);
     memset(va, 'A', 15);
     assert(strcmp((char *)va, string3) == 0);
@@ -48,13 +43,14 @@ void main() {
 
     assert(munmap(va, 4096) == 0);
 
-    assert(!unlink("tes_t.txt"));
+    assert(!unlink("mmap-fd.txt"));
 
   } else if (pid == 0) // child
   {
     for (int i = 0; i < 1000000; i++)
       ;
     void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
+    assert ((uint64) va != MAP_FAILED);
     printf("child: %p\n", va);
     assert(strcmp((char *)va, string) == 0);
 
@@ -63,7 +59,6 @@ void main() {
     close(fd);
     printf("child done\n");
     assert(munmap(va, 4096) == 0);
-    exit(0);
   } else {
     printf("dod weil fork\n");
     assert(0);

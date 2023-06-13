@@ -541,12 +541,13 @@ int sys_munmap_impl(uint64 addr, int size) {
 
       int still_shared = 0;
       if (PTE_S & *pte && PTE_F & *pte) {
-        printk(" MUNMAP: mapped_count on page %d is %d", i, l->file->mapped_count);
         still_shared = l->file->mapped_count > 1 ? 1 : 0;
+        printk(" MUNMAP: mapped_count on page %d, old is %d, new is %d, still shared: %d\n", i, l->file->mapped_count, l->file->mapped_count-1, still_shared);
         if (i == 0) l->file->mapped_count--;
+        // TODO: fle writeback
+      } else if (!(PTE_S & *pte)) {
+        uvmunmap(p->pagetable, va, 1, !still_shared);
       }
-
-      uvmunmap(p->pagetable, va, 1, !still_shared);
     }
   }
 
@@ -594,6 +595,8 @@ uint64 sys_mmap(void) {
 
   int perm = 0;
   perm |= PTE_U;
+  // TODO: Set file permissions as mapping perms to avoid hacky readonly file
+  // mapping to which you can write
   if (prot & PROT_READ) perm |= PTE_R;
   if (prot & PROT_WRITE) perm |= PTE_W;
   if (prot & PROT_EXEC) perm |= PTE_X;
@@ -658,17 +661,23 @@ uint64 sys_mmap(void) {
     perm |= PTE_F;
 
     struct file *f = p->ofile[fd];
+    struct inode *node = f->ip;
+    ilock(node);
 
     if (f == 0 || !f->readable) return MAP_FAILED;
 
     if (f->type != FD_INODE) {
+      iunlock(node);
       panic("Help, no inode");
       return MAP_FAILED;
     }
 
-    struct inode *node = f->ip;
+    if(node->valid == 0) {
+      iunlock(node);
+      return MAP_FAILED;
+    }
+    printk(" MMAP: node size=%d", node->size);
 
-    ilock(node);
 
     if (node->size < size) {
       iunlock(node);
@@ -686,6 +695,7 @@ uint64 sys_mmap(void) {
       cur_buf = bread(node->dev, disk_addr);
       if (!cur_buf->valid) {
         printk(" MMAP: not even valid lol\n");
+        iunlock(node);
         return MAP_FAILED;
       }
 
@@ -695,6 +705,7 @@ uint64 sys_mmap(void) {
       // TODO: VA FINDUNG DAVOR MACHEN!
       if (mappages(p->pagetable, va + (b_index - (offset / BSIZE)) * PGSIZE, n, (uint64)cur_buf->data, perm) < 0) {
         panic("AHHHHHHHHHHHHHHHHHHHH");
+        iunlock(node);
         return MAP_FAILED;
       }
 
@@ -702,7 +713,6 @@ uint64 sys_mmap(void) {
       bytes_read += n;
     }
 
-    iunlock(f->ip);
     taken_list *l_entry = add_mapping(p, va, n_pages, 1);
 
     l_entry->file = f;
@@ -712,6 +722,7 @@ uint64 sys_mmap(void) {
     printk(" MMAP: mapped count %d\n", f->mapped_count);
 
     dump_taken_list(p->mmaped_pages);
+    iunlock(f->ip);
 
     return va;
   }

@@ -183,9 +183,6 @@ pagetable_t proc_pagetable(struct proc *p) {
 // Free a process's page table, and free the
 // physical memory it refers to.
 void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
-  uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-  uvmunmap(pagetable, TRAPFRAME, 1, 0);
-
   while (1) {
     //printk(" PROC_FREEPGTBL: Spinning at %p\n", entry);
     if (entry->used) {
@@ -202,15 +199,15 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
       }
 
       for (int i = 0; i < entry->n_pages; i++) {
-        pte_t *pte = walk(pagetable, entry->va + i * PAGE_SIZE, 0);
+        pte_t *pte = walk(pagetable, entry->va + i * PGSIZE, 0);
         if (pte == 0) continue;
-        if (*pte != 0 && *pte & PTE_V) {
-          if (!(*pte & PTE_U)) continue;
+        if ((*pte & PTE_V) != 0) {
+          //if (*pte & PTE_U == 0) continue;
 
-          if(PTE_S & *pte && ! (PTE_F & *pte)) {
-            panic("TODO");
-            return;
-          }
+          //if((PTE_S & *pte) != 0 && (PTE_F & *pte) != 0) {
+          //  panic("TODO");
+          //  return;
+          //}
 
           printk(" PROC_FREEPGTBL: unmapping %p and is shared %d\n", entry->va + i* PGSIZE, still_shared);
           uvmunmap(pagetable, entry->va + i * PGSIZE, 1, !still_shared);
@@ -224,6 +221,13 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
       entry = (entry - 1)->next;
     }
   }
+
+  printk(" PROC_FREEPGTBL: Call\n");
+  uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+  printk(" PROC_FREEPGTBL: Unmapped trampoline\n");
+  uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  printk(" PROC_FREEPGTBL: Unmapped trapframe\n");
+  
   printk(" PROC_FREEPGTBL: Done freeing mmapped\n");
   uvmfree(pagetable, sz);
   printk(" PROC_FREEPGTBL: Done uvmfree\n");
