@@ -30,11 +30,10 @@ void main() {
   void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
   close(fd);
 
-  int pid = fork();
   printf("Forked!\n");
+  int pid = fork();
   if (pid > 0) // parent
   {
-    printf("Starting parent\n");
     int keine_ahnung;
     if (wait(&keine_ahnung) < 0) {
       printf("HÄ?\n");
@@ -52,6 +51,7 @@ void main() {
   {
     printf("Starting child\n");
     assert(strcmp((char *)va, string) == 0);
+    printf("Memsetting Bs\n");
 
     memset((char *)va + 15, 'B', 15);
     assert(strcmp((char *)va, string2) == 0);

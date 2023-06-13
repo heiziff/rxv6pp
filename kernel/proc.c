@@ -180,39 +180,20 @@ pagetable_t proc_pagetable(struct proc *p) {
   return pagetable;
 }
 
+// we need to access the impl in proc_freepagetable
+// unlucky C
+int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr, int size);
+
 // Free a process's page table, and free the
 // physical memory it refers to.
 void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
+  taken_list *begin = entry;
   while (1) {
     //printk(" PROC_FREEPGTBL: Spinning at %p\n", entry);
     if (entry->used) {
-      printk(" PROC_FREEPGTBL: found used entry at %p\n", entry);
+      printk(" PROC_FREEPGTBL: found used entry at %p\n", entry->va);
 
-      entry->used = 0;
-
-      // Check if page has mapped file and update mapped_count
-      int still_shared = 0;
-      pte_t *pte = walk(pagetable, entry->va, 0);
-      if (PTE_S & *pte && PTE_F & *pte) {
-        entry->file->mapped_count--;
-        still_shared = entry->file->mapped_count >= 1 ? 1 : 0;
-      }
-
-      for (int i = 0; i < entry->n_pages; i++) {
-        pte_t *pte = walk(pagetable, entry->va + i * PGSIZE, 0);
-        if (pte == 0) continue;
-        if ((*pte & PTE_V) != 0) {
-          //if (*pte & PTE_U == 0) continue;
-
-          //if((PTE_S & *pte) != 0 && (PTE_F & *pte) != 0) {
-          //  panic("TODO");
-          //  return;
-          //}
-
-          printk(" PROC_FREEPGTBL: unmapping %p and is shared %d\n", entry->va + i* PGSIZE, still_shared);
-          uvmunmap(pagetable, entry->va + i * PGSIZE, 1, !still_shared);
-        }
-      }
+      sys_munmap_impl(pagetable, begin, entry->va, entry->n_pages * PGSIZE);
     }
     entry++;
     if ((uint64)entry % PGSIZE == 0) {
@@ -281,6 +262,8 @@ int growproc(int n) {
   return 0;
 }
 
+taken_list* add_mapping(struct proc *p, uint64 va, int n_pages, int shared);
+
 // Create a new process, copying the parent.
 // Sets up child kernel stack to return as if from fork() system call.
 int fork(void) {
@@ -297,8 +280,41 @@ int fork(void) {
     release(&np->lock);
     return -1;
   }
-  printk(" FORK: Finished copying user memory\n");
   np->sz = p->sz;
+
+  // TODO: Copy mmap memory from parent to child
+  acquire(&p->lock);
+
+  taken_list *l = p->mmaped_pages;
+  while (1)
+  {
+    if (l->used) 
+    {
+      // copy taken_list entry from parent to child if its used
+      taken_list *new_entry = add_mapping(np, l->va, l->n_pages, l->shared);
+      new_entry->file = l->file;
+
+      // add the actual mapping to the pagetable
+      for (int i = 0; i < l->n_pages; i++) {
+        pte_t *pte = walk(p->pagetable, l->va + i * PGSIZE, 0);
+        uint64 pa = walkaddr(p->pagetable, l->va + i * PGSIZE);
+        printk(" FORK: mapping va %p to pa %p\n", new_entry->va, pa);
+        mappages(np->pagetable, new_entry->va + i * PGSIZE, PGSIZE, pa, PTE_FLAGS(*pte));
+      }
+    }
+
+    l++;
+    if ((uint64)l % PGSIZE == 0) {
+      if ((l-1)->next == 0) {
+        break;
+      };
+      l = (l-1)->next;
+    }
+  }
+
+  release(&p->lock);
+
+  printk(" FORK: Finished copying user memory\n");
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -477,6 +493,7 @@ void scheduler(void) {
 void sched(void) {
   int intena;
   struct proc *p = myproc();
+  printk(" SCHED: noff=%d\n", mycpu()->noff);
 
   if (!holding(&p->lock)) panic("sched p->lock");
   if (mycpu()->noff != 1) panic("sched locks");
