@@ -46,6 +46,8 @@ void main() {
     assert(strcmp((char *)va, string3) == 0);
 
     assert(!unlink("mmap-fd2.txt"));
+    assert(munmap(va, 4096) == 0);
+    printf("exiting parent\n");
 
   } else if (pid == 0) // child
   {
@@ -55,6 +57,7 @@ void main() {
 
     memset((char *)va + 15, 'B', 15);
     assert(strcmp((char *)va, string2) == 0);
+    assert(munmap(va, 4096) == 0);
     exit(0);
   } else {
     printf("dod weil fork\n");

@@ -31,8 +31,8 @@ void main() {
     // We shouldn't be able to read, because file is still mmapped
     assert(count <= 0);
 
-
-    munmap(va, size);
+    // TODO: WRONG SIZE!!!!
+    munmap(va, 4096);
 
     close(fd);
     fd = open("mmap-wr.txt", O_RDONLY);

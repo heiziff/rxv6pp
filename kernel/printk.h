@@ -30,6 +30,7 @@ void printk(char *, ...);
 void panic(char *) __attribute__((noreturn));
 void printkinit(void);
 
+void dbg(char *, ...);
 
 #ifdef __cplusplus
 }

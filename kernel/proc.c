@@ -187,13 +187,16 @@ int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr
 // Free a process's page table, and free the
 // physical memory it refers to.
 void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
+  dbg(" PROC_FREEPGTBL: Call\n");
+
   taken_list *begin = entry;
   while (1) {
-    //printk(" PROC_FREEPGTBL: Spinning at %p\n", entry);
+    //dbg(" PROC_FREEPGTBL: Spinning at %p\n", entry);
     if (entry->used) {
-      printk(" PROC_FREEPGTBL: found used entry at %p\n", entry->va);
+      dbg(" PROC_FREEPGTBL: found used entry at %p\n", entry->va);
 
-      sys_munmap_impl(pagetable, begin, entry->va, entry->n_pages * PGSIZE);
+      int ret = sys_munmap_impl(pagetable, begin, entry->va, entry->n_pages * PGSIZE);
+      dbg(" PROC_FREEPGTBL: munmap ret %d\n", ret);
     }
     entry++;
     if ((uint64)entry % PGSIZE == 0) {
@@ -203,15 +206,14 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
     }
   }
 
-  printk(" PROC_FREEPGTBL: Call\n");
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-  printk(" PROC_FREEPGTBL: Unmapped trampoline\n");
+  dbg(" PROC_FREEPGTBL: Unmapped trampoline\n");
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
-  printk(" PROC_FREEPGTBL: Unmapped trapframe\n");
+  dbg(" PROC_FREEPGTBL: Unmapped trapframe\n");
   
-  printk(" PROC_FREEPGTBL: Done freeing mmapped\n");
+  dbg(" PROC_FREEPGTBL: Done freeing mmapped\n");
   uvmfree(pagetable, sz);
-  printk(" PROC_FREEPGTBL: Done uvmfree\n");
+  dbg(" PROC_FREEPGTBL: Done uvmfree\n");
 }
 
 // a user program that calls exec("/init")
@@ -292,13 +294,15 @@ int fork(void) {
     {
       // copy taken_list entry from parent to child if its used
       taken_list *new_entry = add_mapping(np, l->va, l->n_pages, l->shared);
+      dbg(" FORK: file %p, mapped_count %d\n", l->file, l->file->mapped_count);
       new_entry->file = l->file;
+      l->file->mapped_count++;
 
       // add the actual mapping to the pagetable
       for (int i = 0; i < l->n_pages; i++) {
         pte_t *pte = walk(p->pagetable, l->va + i * PGSIZE, 0);
         uint64 pa = walkaddr(p->pagetable, l->va + i * PGSIZE);
-        printk(" FORK: mapping va %p to pa %p\n", new_entry->va, pa);
+        dbg(" FORK: mapping va %p to pa %p\n", new_entry->va, pa);
         mappages(np->pagetable, new_entry->va + i * PGSIZE, PGSIZE, pa, PTE_FLAGS(*pte));
       }
     }
@@ -314,7 +318,7 @@ int fork(void) {
 
   release(&p->lock);
 
-  printk(" FORK: Finished copying user memory\n");
+  dbg(" FORK: Finished copying user memory\n");
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -326,7 +330,7 @@ int fork(void) {
   for (i = 0; i < NOFILE; i++)
     if (p->ofile[i]) np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
-  printk(" FORK: Finished incrementing reference counters\n");
+  dbg(" FORK: Finished incrementing reference counters\n");
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
@@ -342,7 +346,7 @@ int fork(void) {
   np->state = RUNNABLE;
   release(&np->lock);
 
-  printk(" FORK: Done!\n");
+  dbg(" FORK: Done!\n");
 
   return pid;
 }
@@ -493,7 +497,6 @@ void scheduler(void) {
 void sched(void) {
   int intena;
   struct proc *p = myproc();
-  printk(" SCHED: noff=%d\n", mycpu()->noff);
 
   if (!holding(&p->lock)) panic("sched p->lock");
   if (mycpu()->noff != 1) panic("sched locks");
