@@ -101,6 +101,16 @@ void printk(char *fmt, ...) {
   if (locking) release(&pr.lock);
 }
 
+void dbg(char* fmt, ...) {
+#define KERNEL_DEBUG 0
+#if KERNEL_DEBUG
+  va_list args;
+  va_start(args, fmt);
+  printk(fmt, args);
+  va_end(args);
+#endif
+}
+
 void panic(char *s) {
   pr.locking = 0;
   pr_emerg("panic: ");

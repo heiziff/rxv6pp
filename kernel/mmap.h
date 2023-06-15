@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include "file.h"
+
 #define PAGE_SIZE 4096
 
 #define MAP_FAILED ((uint64)-1)
@@ -48,8 +50,13 @@ typedef struct taken_list_s {
   int used;
   int shared;
   uint64 va;
+  struct file *file;
   size_t n_pages;
   struct taken_list_s *next;
+
+  // ASSUMPTION: All above has 40 bytes
+  uint8 pad[24]; // Padding, so that this struct is page aligned
+
 } taken_list;
 
 

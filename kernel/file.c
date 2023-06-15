@@ -135,6 +135,7 @@ int filewrite(struct file *f, uint64 addr, int n) {
 
       if (r != n1) {
         // error from writei
+        printk(" leaving, i=%d, n=%d, r=%d, n1=%d\n", i, n, r, n1);
         break;
       }
       i += r;
