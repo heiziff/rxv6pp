@@ -274,5 +274,28 @@ rt-bench.local: $K/kernel rt-bench.local.img
 rt-bench.shared: $K/kernel rt-bench.shared.img
 	$(QEMU) $(QEMUOPTS) $(subst fs.img,rt-bench.shared.img,$(QEMUOPTS.drive))
 
-test: $(COMPILEOUT)
+#test: $(COMPILEOUT)
 
+define NEWLINE
+
+
+endef
+
+rt-bench-individual.local: $K/kernel mkfs/mkfs $(BENCHMARKBIN.local)
+	$(BENCHMARKEXEC.local)
+rt-bench-individual.shared: $K/kernel mkfs/mkfs $(BENCHMARKBIN.shared)
+	$(BENCHMARKEXEC.shared)
+
+rt-bench-individual: rt-bench-individual.local rt-bench-individual.shared
+
+test.local: ct-test.local rt-test.local
+test.shared: ct-test.shared rt-test.shared
+test: test.local test.shared
+
+bench.local: rt-bench.local
+bench.shared: rt-bench.shared
+bench: bench.local bench.shared
+
+eval: test bench
+
+all: fs.img eval

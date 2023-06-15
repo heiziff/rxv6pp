@@ -102,7 +102,7 @@ void printk(char *fmt, ...) {
 }
 
 void dbg(char* fmt, ...) {
-#define KERNEL_DEBUG 1
+#define KERNEL_DEBUG 0
 #if KERNEL_DEBUG
   va_list args;
   va_start(args, fmt);
