@@ -134,6 +134,7 @@ found:
 // p->lock must be held.
 static void freeproc(struct proc *p) {
   if (p->trapframe) kfree((void *)p->trapframe);
+  // TODO: free mmapped_pages pls :)
   p->trapframe = 0;
   if (p->pagetable) proc_freepagetable(p->pagetable, p->sz, p->mmaped_pages);
   p->pagetable = 0;
@@ -179,20 +180,23 @@ pagetable_t proc_pagetable(struct proc *p) {
   return pagetable;
 }
 
+// we need to access the impl in proc_freepagetable
+// unlucky C
+int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr, int size);
+
 // Free a process's page table, and free the
 // physical memory it refers to.
 void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
-  uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-  uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  dbg(" PROC_FREEPGTBL: Call\n");
 
+  taken_list *begin = entry;
   while (1) {
+    //dbg(" PROC_FREEPGTBL: Spinning at %p\n", entry);
     if (entry->used) {
-      for (int i = 0; i < entry->n_pages; i++) {
-        if (walkaddr(pagetable, entry->va + i * PGSIZE)) {
-          int free_phys = !entry->shared;
-          uvmunmap(pagetable, entry->va + i * PGSIZE, 1, free_phys);
-        }
-      }
+      dbg(" PROC_FREEPGTBL: found used entry at %p\n", entry->va);
+
+      int ret = sys_munmap_impl(pagetable, begin, entry->va, entry->n_pages * PGSIZE);
+      dbg(" PROC_FREEPGTBL: munmap ret %d\n", ret);
     }
     entry++;
     if ((uint64)entry % PGSIZE == 0) {
@@ -202,7 +206,14 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
     }
   }
 
+  uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+  dbg(" PROC_FREEPGTBL: Unmapped trampoline\n");
+  uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  dbg(" PROC_FREEPGTBL: Unmapped trapframe\n");
+  
+  dbg(" PROC_FREEPGTBL: Done freeing mmapped\n");
   uvmfree(pagetable, sz);
+  dbg(" PROC_FREEPGTBL: Done uvmfree\n");
 }
 
 // a user program that calls exec("/init")
@@ -253,6 +264,8 @@ int growproc(int n) {
   return 0;
 }
 
+taken_list* add_mapping(struct proc *p, uint64 va, int n_pages, int shared);
+
 // Create a new process, copying the parent.
 // Sets up child kernel stack to return as if from fork() system call.
 int fork(void) {
@@ -271,6 +284,42 @@ int fork(void) {
   }
   np->sz = p->sz;
 
+  // TODO: Copy mmap memory from parent to child
+  acquire(&p->lock);
+
+  taken_list *l = p->mmaped_pages;
+  while (1)
+  {
+    if (l->used) 
+    {
+      // copy taken_list entry from parent to child if its used
+      taken_list *new_entry = add_mapping(np, l->va, l->n_pages, l->shared);
+      dbg(" FORK: file %p, mapped_count %d\n", l->file, l->file->mapped_count);
+      new_entry->file = l->file;
+      l->file->mapped_count++;
+
+      // add the actual mapping to the pagetable
+      for (int i = 0; i < l->n_pages; i++) {
+        pte_t *pte = walk(p->pagetable, l->va + i * PGSIZE, 0);
+        uint64 pa = walkaddr(p->pagetable, l->va + i * PGSIZE);
+        dbg(" FORK: mapping va %p to pa %p\n", new_entry->va, pa);
+        mappages(np->pagetable, new_entry->va + i * PGSIZE, PGSIZE, pa, PTE_FLAGS(*pte));
+      }
+    }
+
+    l++;
+    if ((uint64)l % PGSIZE == 0) {
+      if ((l-1)->next == 0) {
+        break;
+      };
+      l = (l-1)->next;
+    }
+  }
+
+  release(&p->lock);
+
+  dbg(" FORK: Finished copying user memory\n");
+
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
@@ -281,6 +330,7 @@ int fork(void) {
   for (i = 0; i < NOFILE; i++)
     if (p->ofile[i]) np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
+  dbg(" FORK: Finished incrementing reference counters\n");
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
@@ -295,6 +345,8 @@ int fork(void) {
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
+
+  dbg(" FORK: Done!\n");
 
   return pid;
 }

@@ -54,6 +54,10 @@ uint64 sys_read(void) {
   argaddr(1, &p);
   argint(2, &n);
   if (argfd(0, 0, &f) < 0) return -1;
+
+  // Can't read if file is mmapped
+  if (f->mapped_count) return -1;
+
   return fileread(f, p, n);
 }
 
@@ -65,6 +69,9 @@ uint64 sys_write(void) {
   argaddr(1, &p);
   argint(2, &n);
   if (argfd(0, 0, &f) < 0) return -1;
+
+  // Can't write if file is mmapped
+  if (f->mapped_count) return -1;
 
   return filewrite(f, p, n);
 }
@@ -452,7 +459,7 @@ uint64 mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages) {
 
 uint bmap(struct inode *ip, uint bn);
 
-static void add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
+taken_list* add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
   // add the new mapping to proc struct
   taken_list *entry = p->mmaped_pages;
   while (entry->used) {
@@ -471,13 +478,155 @@ static void add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
   entry->n_pages = n_pages;
   entry->used    = 1;
   entry->shared  = shared;
+
+  return entry;
 }
 
+void dump_taken_list(taken_list *list) {
+  dbg("-TAKEN LIST DUMP: ---------------------------------\n");
+  do {
+    if (list->used) {
+      dbg(" Used entry: va=%p, n_pages=%d, file=%p, shared=%d\n", list->va, list->n_pages, list->file, list->shared);
+    }
+    else {
+      dbg(" Unused entry: %p\n", list->va);
+    }
+    list++;
+    if ((uint64) list % PGSIZE == 0) {
+      list = (list - 1)->next;
+      dbg(" At page end with next %p!\n", list);
+    }
+
+  } while ((list - 1)->next != 0);
+  dbg("-DUMP END ---------------------------------\n");
+}
+
+int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr, int size) {
+  if (size % PGSIZE != 0) return -1;
+  int n_pages = (size - 1) / PGSIZE + 1;
+  dbg(" MUNMAP: Called with %p and %d bytes -> %d pages\n", addr, size, n_pages);
+  if (addr % PGSIZE != 0) return -1;
+  if (addr < MMAP_VA_BEGIN || addr >= MMAP_VA_END - n_pages * PGSIZE) return -1;
+
+  // Remove used flag from mappings in taken list
+  // TODO: Refactor add_mapping into two functions
+  taken_list *l = mmaped_pages;
+  while (1)
+  {
+    if (l->va == addr && l->used)
+    {
+      l->used = 0;
+      dbg(" MUNMAP: found mapping with va %p and %d pages\n", l->va, l->n_pages);
+
+      // We do not unmap anything if the given size does not match the actual
+      // size of the mapping. If we only free a bit of the mapping, we would not
+      // know that there is a left over mapping when the process dies => panic: freewalk
+      if (l->n_pages != n_pages) {
+        dbg(" MUNMAP: passed size (%d pages) does not match the size of the mapping (%d pages)\n", n_pages, l->n_pages);
+        return -1;
+      }
+      break;
+    }
+
+    l++;
+    if ((uint64)l % PGSIZE == 0) {
+      if ((l-1)->next == 0) {
+        dbg(" MUNMAP: invalid address\n");
+        return -1;
+      };
+      l = (l-1)->next;
+    }
+  }
+
+  dbg("MUNMAP: WE GOT HERE\n");
+
+  if (l->shared && l->file) {
+    dbg(" MUNMAP: file backed shared mapping found, decrementing mapped_count from file\n");
+    l->file->mapped_count--;
+  }
+  for (int i = 0; i < n_pages; i++) {
+    uint64 va = addr + i * PGSIZE;
+    pte_t *pte = walk(pagetable, va, 0);
+    if (*pte != 0 && *pte & PTE_V) {
+      if (!(*pte & PTE_U)) continue;
+
+      int still_shared = 0;
+      if (PTE_S & *pte && PTE_F & *pte) {
+        dbg(" MUNMAP: before begin_op\n");
+        begin_op();
+        still_shared = l->file->mapped_count >= 1 ? 1 : 0;
+        dbg(" MUNMAP: mapped_count on page %d, old is %d, new is %d, still shared: %d\n", i, l->file->mapped_count + 1, l->file->mapped_count, still_shared);
+
+        // file writeback for shared and file backed mappings
+        if (!still_shared) {
+          // TODO: maybe use sleep lock?
+          acquiresleep(&l->file->ip->lock);
+
+          for (int b_index = 0; b_index < n_pages; b_index++) {
+            dbg(" MUNMAP: bmap begin\n");
+            uint disk_addr = bmap(l->file->ip, b_index);
+            dbg(" MUNMAP: Finished bmap\n");
+            if (disk_addr == 0) break;
+            dbg(" MUNMAP: bread begin\n");
+            struct buf* cur_buf = bread(l->file->ip->dev, disk_addr);
+            dbg(" MUNMAP: bread end, got buf %p\n", cur_buf);
+            if (!cur_buf->valid) {
+              dbg(" MUNMAP: not even valid lol\n");
+              releasesleep(&l->file->ip->lock);
+              end_op();
+              return -1;
+            }
+            dbg(" MUNMAP: bwrite begin\n");
+            if (!holdingsleep(&cur_buf->lock)) {
+              dbg(" MUNMAP: bwrite, need sleeplock\n");
+              acquiresleep(&cur_buf->lock);
+              bwrite(cur_buf);
+              releasesleep(&cur_buf->lock);
+            } else {
+              dbg(" MUNMAP: bwrite, do not need sleeplock\n");
+              bwrite(cur_buf);
+            }
+            dbg(" MUNMAP: bwrite end\n");
+          }
+
+          releasesleep(&l->file->ip->lock);
+        }
+        end_op();
+        dbg(" MUNMAP: after end_op\n");
+
+        // unmap virtual address
+        uvmunmap(pagetable, va, 1, 0);
+      } else if (!(PTE_S & *pte)) {
+        uvmunmap(pagetable, va, 1, 1);
+      } else if (PTE_S & *pte & !(PTE_F & *pte)) {
+        panic("TODO");
+      }
+    }
+  }
+
+  return 0;
+}
+
+int sys_munmap(void) {
+  uint64 addr;
+  int size;
+
+  argaddr(0, &addr);
+  argint(1, &size);
+
+  struct proc *p = myproc();
+  return sys_munmap_impl(p->pagetable, p->mmaped_pages, addr, size);
+}
+
+
+// TODO: shared mappings refcount tracken x)
 uint64 sys_mmap(void) {
   uint64 va;
   int size, n_pages, prot, flags, fd, offset;
 
   struct proc *p = myproc();
+
+  dump_taken_list(p->mmaped_pages);
 
   argaddr(0, &va);
   argint(1, &size);
@@ -495,15 +644,24 @@ uint64 sys_mmap(void) {
   if (flags & MAP_PRIVATE && flags & MAP_SHARED) return MAP_FAILED;
   if (n_pages <= 0) return MAP_FAILED;
 
+  // we need to get the buffer cache blocks in munmap and this is a huge
+  // pain if we also support offsets, since we dont know where to write back
+  // into the file without the offset
+  if (offset != 0) return MAP_FAILED;
+  if (offset % PAGE_SIZE != 0) return MAP_FAILED;
+
   // TODO: Remove if implement private file backed mappings
   if (!(flags & MAP_ANON) && !(flags & MAP_SHARED)) return MAP_FAILED;
   if ((flags & MAP_ANON) && (flags & MAP_SHARED)) return MAP_FAILED;
 
   int perm = 0;
   perm |= PTE_U;
+  // TODO: Set file permissions as mapping perms to avoid hacky readonly file
+  // mapping to which you can write
   if (prot & PROT_READ) perm |= PTE_R;
   if (prot & PROT_WRITE) perm |= PTE_W;
   if (prot & PROT_EXEC) perm |= PTE_X;
+  if (flags & MAP_SHARED) perm |= PTE_S;
 
   // we do not allow mmap to map fixed allocations into our buddy allocator
   if ((flags & MAP_FIXED || flags & MAP_FIXED_NOREPLACE) && (va < MMAP_VA_BEGIN || va >= MMAP_VA_END - n_pages)) {
@@ -532,6 +690,24 @@ uint64 sys_mmap(void) {
         if (flags & MAP_FIXED) {
           pte_t *pte = walk(p->pagetable, va + i * PGSIZE, 0);
           if (!(*pte & PTE_U)) return MAP_FAILED;
+
+          // Unmap old maybe overlapping mappings
+          taken_list *l = p->mmaped_pages;
+          while (1)
+          {
+            if (va >= l->va && va < l->va + l->n_pages * PAGE_SIZE){
+              sys_munmap_impl(p->pagetable, p->mmaped_pages, l->va, l->n_pages * PAGE_SIZE);
+            } 
+            else if (l->va >= va && l->va < va + n_pages * PAGE_SIZE){
+              sys_munmap_impl(p->pagetable, p->mmaped_pages, l->va, l->n_pages * PAGE_SIZE);
+            }
+
+            l++;
+            if ((uint64)l % PGSIZE == 0) {
+              if ((l-1)->next == 0) break;
+              l = (l-1)->next;
+            }
+          }
         }
       }
     }
@@ -543,22 +719,30 @@ uint64 sys_mmap(void) {
 
     if (fd < 0) return MAP_FAILED;
 
-    struct file *f = p->ofile[fd];
+    perm |= PTE_F;
 
+    struct file *f = p->ofile[fd];
     if (f == 0 || !f->readable) return MAP_FAILED;
 
+    struct inode *node = f->ip;
+    ilock(node);
+
+
     if (f->type != FD_INODE) {
+      iunlock(node);
       panic("Help, no inode");
       return MAP_FAILED;
     }
 
-    struct inode *node = f->ip;
-
-    ilock(node);
-
-    if (node->size < size) {
+    if(node->valid == 0) {
       iunlock(node);
-      printk("size unlucky\n");
+      return MAP_FAILED;
+    }
+    dbg(" MMAP: node size=%d", node->size);
+
+    if (node->size + offset < size) {
+      iunlock(node);
+      dbg(" MMAP: size unlucky\n");
       return MAP_FAILED;
     }
 
@@ -566,12 +750,13 @@ uint64 sys_mmap(void) {
 
     int bytes_read = 0;
 
-    for (int b_index = offset / BSIZE; b_index < n_pages; b_index++) {
+    for (int b_index = offset / BSIZE; b_index < n_pages + offset / BSIZE; b_index++) {
       uint disk_addr = bmap(node, b_index);
       if (disk_addr == 0) break;
       cur_buf = bread(node->dev, disk_addr);
       if (!cur_buf->valid) {
-        printk("not even valid lol\n");
+        dbg(" MMAP: not even valid lol\n");
+        iunlock(node);
         return MAP_FAILED;
       }
 
@@ -581,6 +766,7 @@ uint64 sys_mmap(void) {
       // TODO: VA FINDUNG DAVOR MACHEN!
       if (mappages(p->pagetable, va + (b_index - (offset / BSIZE)) * PGSIZE, n, (uint64)cur_buf->data, perm) < 0) {
         panic("AHHHHHHHHHHHHHHHHHHHH");
+        iunlock(node);
         return MAP_FAILED;
       }
 
@@ -588,8 +774,16 @@ uint64 sys_mmap(void) {
       bytes_read += n;
     }
 
+    taken_list *l_entry = add_mapping(p, va, n_pages, 1);
+
+    l_entry->file = f;
+
+    // TODO: RACE ME TO THE MOON
+    f->mapped_count++;
+    dbg(" MMAP: mapped count %d\n", f->mapped_count);
+
+    dump_taken_list(p->mmaped_pages);
     iunlock(f->ip);
-    add_mapping(p, va, n_pages, 1);
 
     return va;
   }
@@ -626,28 +820,4 @@ uint64 sys_mmap(void) {
   return va;
 }
 
-int sys_munmap(void) {
-  uint64 addr;
-  int size, n_pages;
 
-  argaddr(0, &addr);
-  argint(1, &size);
-
-  if (size % PGSIZE != 0) return -1;
-  n_pages = size / PGSIZE;
-  if (addr % PGSIZE != 0) return -1;
-  if (addr < MMAP_VA_BEGIN || addr >= MMAP_VA_END - n_pages * PGSIZE) return -1;
-
-  struct proc *p = myproc();
-
-  for (int i = 0; i < n_pages; i++) {
-    uint64 va = addr + i * PGSIZE;
-    if (walkaddr(p->pagetable, va)) {
-      pte_t *pte = walk(p->pagetable, va, 0);
-      // TODO: move shared mapping info to pagetable entry instead of taken list
-      if (*pte & PTE_U) uvmunmap(p->pagetable, va, 1, 1);
-    }
-  }
-
-  return 0;
-}

@@ -84,7 +84,9 @@ static struct buf *bget(uint dev, uint blockno) {
 struct buf *bread(uint dev, uint blockno) {
   struct buf *b;
 
+  // printk(" BREAD: calling bget\n");
   b = bget(dev, blockno);
+  // printk(" BREAD: got buf struct\n");
   if (!b->valid) {
     virtio_disk_rw(b, 0);
     b->valid = 1;
@@ -94,15 +96,18 @@ struct buf *bread(uint dev, uint blockno) {
 
 // Write b's contents to disk.  Must be locked.
 void bwrite(struct buf *b) {
-  //if(!holdingsleep(&b->lock))
-  //  panic("bwrite");
+  if(!holdingsleep(&b->lock)) {
+    // panic("bwrite");
+    // acquiresleep(&b->lock);
+  }
   virtio_disk_rw(b, 1);
+  // releasesleep(&b->lock);
 }
 
 // Release a locked buffer.
 // Move to the head of the most-recently-used list.
 void brelse(struct buf *b) {
-  //if(!holdingsleep(&b->lock))
+  // if(!holdingsleep(&b->lock))
   //  panic("brelse");
 
   //releasesleep(&b->lock);
