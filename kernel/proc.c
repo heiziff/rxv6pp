@@ -3,9 +3,57 @@
 
 struct cpu cpus[NCPU];
 
-struct proc proc[NPROC];
+struct proc_queue_item procs[NPROC];
 
 struct proc *initproc;
+
+typedef struct proc_queue_s {
+  proc_queue_item *first;
+  proc_queue_item *last;
+  size_t size;
+} proc_queue;
+
+typedef struct proc_queue_item_s {
+  struct proc proc;
+  struct proc_queue_item_s *next;
+} proc_queue_item;
+
+proc_queue proc_qs[NPRIO];
+
+void enqueue_proc(proc_queue* p_q, proc_queue_item *p)
+{
+  // TODO: What if procs are distributed between queues
+  if (size == NPROC) {
+    panic("Proc queue full");
+    return;
+  }
+
+  p_q->last->next = p;
+  p_q->last = p;
+
+  p_q->size++;
+  
+}
+
+struct proc dequeue_proc(proc_queue* p_q)
+{
+  if (size == 0) {
+    panic("Proc queue empty");
+    return;
+  }
+
+  struct proc result = p_q->first.proc;
+
+  p_q->first = p_q->first->next;
+
+  p_q->size--;
+
+  // Dequeued last element, also update last!
+  if(p_q->first == 0) p_q->last = 0;
+
+  return result;
+}
+
 
 int nextpid = 1;
 struct spinlock pid_lock;
@@ -26,26 +74,34 @@ struct spinlock wait_lock;
 // guard page.
 void proc_mapstacks(pagetable_t kpgtbl) {
   struct proc *p;
+  proc_queue_item pi;
 
-  for (p = proc; p < &proc[NPROC]; p++) {
+  //TODO: Maybe do this lazy on process creation and not on startup
+  for (pi = procs; pi < &procs[NPROC]; pi++) {
+    p = &pi.proc;
     char *pa = kalloc();
     if (pa == 0) panic("kalloc");
-    uint64 va = KSTACK((int)(p - proc));
+    uint64 va = KSTACK((int)(p - proc_qs[i].procs));
     kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
   }
+  
 }
 
 // initialize the proc table.
 void procinit(void) {
   struct proc *p;
+  proc_queue_item pi;
 
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
-  for (p = proc; p < &proc[NPROC]; p++) {
+
+  for (pi = procs; pi < &procs[NPROC]; pi++) {
+    p = &pi.proc;
     initlock(&p->lock, "proc");
     p->state  = UNUSED;
-    p->kstack = KSTACK((int)(p - proc));
+    p->kstack = KSTACK((int)(p - procs));
   }
+  
 }
 
 // Must be called with interrupts disabled,
