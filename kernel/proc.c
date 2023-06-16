@@ -3,24 +3,41 @@
 
 struct cpu cpus[NCPU];
 
-struct proc_queue_item procs[NPROC];
-
-struct proc *initproc;
-
 typedef struct proc_queue_s {
   proc_queue_item *first;
   proc_queue_item *last;
   size_t size;
+  proc_queue_item proc_q_itms[NPROC];
+  struct spinlock lock;
 } proc_queue;
 
 typedef struct proc_queue_item_s {
-  struct proc proc;
+  struct proc *proc;
   struct proc_queue_item_s *next;
 } proc_queue_item;
 
+
+struct proc procs[NPROC];
+
+struct proc *initproc;
+
 proc_queue proc_qs[NPRIO];
 
-void enqueue_proc(proc_queue* p_q, proc_queue_item *p)
+void proc_queue_init() 
+{
+  for (int prio = 0; prio < NPRIO; prio++) {
+
+    initlock(proc_qs[prio].lock, "queue lock");
+    for (int i = 0; i < NPROC; j++ ) {
+      proc_qs[prio].proc_q_itms[i].next = proc_qs[prio].proc_q_itms[(i+1) % NPROC];
+    }
+    proc_qs[prio].first = proc_qs[prio].proc_q_itms[0];
+    proc_qs[prio].last = proc_qs[prio].proc_q_itms[0];
+    proc_qs[prio].size = 0;
+  }
+}
+
+void enqueue_proc(proc_queue* p_q, struct proc *p)
 {
   // TODO: What if procs are distributed between queues
   if (size == NPROC) {
@@ -28,28 +45,25 @@ void enqueue_proc(proc_queue* p_q, proc_queue_item *p)
     return;
   }
 
-  p_q->last->next = p;
-  p_q->last = p;
+  p_q->last = p_q->last->next;
+  p_q->last->proc = p;
 
   p_q->size++;
   
 }
 
-struct proc dequeue_proc(proc_queue* p_q)
+struct proc* dequeue_proc(proc_queue* p_q)
 {
   if (size == 0) {
     panic("Proc queue empty");
     return;
   }
 
-  struct proc result = p_q->first.proc;
+  struct proc *result = p_q->first->proc;
 
   p_q->first = p_q->first->next;
 
   p_q->size--;
-
-  // Dequeued last element, also update last!
-  if(p_q->first == 0) p_q->last = 0;
 
   return result;
 }
@@ -74,14 +88,12 @@ struct spinlock wait_lock;
 // guard page.
 void proc_mapstacks(pagetable_t kpgtbl) {
   struct proc *p;
-  proc_queue_item pi;
 
   //TODO: Maybe do this lazy on process creation and not on startup
-  for (pi = procs; pi < &procs[NPROC]; pi++) {
-    p = &pi.proc;
+  for (p = procs; p < &procs[NPROC]; p++) {
     char *pa = kalloc();
     if (pa == 0) panic("kalloc");
-    uint64 va = KSTACK((int)(p - proc_qs[i].procs));
+    uint64 va = KSTACK((int)(p - procs));
     kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
   }
   
@@ -90,13 +102,11 @@ void proc_mapstacks(pagetable_t kpgtbl) {
 // initialize the proc table.
 void procinit(void) {
   struct proc *p;
-  proc_queue_item pi;
 
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
 
-  for (pi = procs; pi < &procs[NPROC]; pi++) {
-    p = &pi.proc;
+  for (p = procs; p < &procs[NPROC]; p++) {
     initlock(&p->lock, "proc");
     p->state  = UNUSED;
     p->kstack = KSTACK((int)(p - procs));
@@ -201,6 +211,7 @@ static void freeproc(struct proc *p) {
   p->chan      = 0;
   p->killed    = 0;
   p->xstate    = 0;
+  p->prio      = -1;
   p->state     = UNUSED;
 }
 
@@ -400,6 +411,8 @@ int fork(void) {
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+  np->prio = p->prio;
+  enqueue_proc(proc_qs[np->prio], np);
   release(&np->lock);
 
   dbg(" FORK: Done!\n");
@@ -524,22 +537,25 @@ void scheduler(void) {
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    for (p = proc; p < &proc[NPROC]; p++) {
+    for (int prio = 0; prio < NPRIO; prio++) {
+      acquire(&proc_qs[prio].lock);
+      if (proc_qs[prio].size == 0) continue;
+      struct proc *p = dequeue_proc(proc_qs[prio]);
       acquire(&p->lock);
-      if (p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc  = p;
-        swtch(&c->context, &p->context);
+      if (p->state != RUNNABLE) panic("Unexpected un-runnable");
+      p->state = RUNNING;
+      c->proc = p;
+      release(&proc_qs[prio].lock);
+      swtch(&c->context, &p->context);
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
       release(&p->lock);
+      break;
     }
+    
   }
 }
 
