@@ -40,7 +40,7 @@ void proc_queue_init()
 void enqueue_proc(proc_queue* p_q, struct proc *p)
 {
   // TODO: What if procs are distributed between queues
-  if (size == NPROC) {
+  if (p_q->size == NPROC) {
     panic("Proc queue full");
     return;
   }
@@ -49,12 +49,11 @@ void enqueue_proc(proc_queue* p_q, struct proc *p)
   p_q->last->proc = p;
 
   p_q->size++;
-  
 }
 
 struct proc* dequeue_proc(proc_queue* p_q)
 {
-  if (size == 0) {
+  if (p_q->size == 0) {
     panic("Proc queue empty");
     return;
   }
@@ -294,6 +293,7 @@ uchar initcode[] = {0x17, 0x05, 0x00, 0x00, 0x13, 0x05, 0x45, 0x02, 0x97, 0x05, 
 // Set up first user process.
 void userinit(void) {
   struct proc *p;
+  proc_queue_init();
 
   p        = allocproc();
   initproc = p;
@@ -310,7 +310,11 @@ void userinit(void) {
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
+  // should just go through since nobody should exist at this time
+  acquire(&proc_qs[2].lock);
   p->state = RUNNABLE;
+  enqueue_proc(&proc_qs[2], p);
+  release(&proc_qs[2].lock);
 
   release(&p->lock);
 }
@@ -412,7 +416,11 @@ int fork(void) {
   acquire(&np->lock);
   np->state = RUNNABLE;
   np->prio = p->prio;
+
+  acquire(&proc_qs[np->prio].lock);
   enqueue_proc(proc_qs[np->prio], np);
+  release(&proc_qs[np->prio].lock);
+
   release(&np->lock);
 
   dbg(" FORK: Done!\n");
@@ -552,6 +560,11 @@ void scheduler(void) {
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
+
+      acquire(&proc_qs[prio].lock);
+      enqueue_proc(&proc_qs[prio], p);
+      release(&proc_qs[prio].lock);
+      
       release(&p->lock);
       break;
     }
@@ -584,7 +597,13 @@ void sched(void) {
 void yield(void) {
   struct proc *p = myproc();
   acquire(&p->lock);
+  if(p->prio > 0) p->prio--;
   p->state = RUNNABLE;
+
+  acquire(&proc_qs[p->prio]);
+  enqueue_proc(proc_qs[p->prio], p);
+  release(&proc_qs[p->prio]);
+
   sched();
   release(&p->lock);
 }
@@ -623,6 +642,8 @@ void sleep(void *chan, struct spinlock *lk) {
   acquire(&p->lock); //DOC: sleeplock1
   release(lk);
 
+  if (p->prio > 0) p->prio--;
+
   // Go to sleep.
   p->chan  = chan;
   p->state = SLEEPING;
@@ -645,7 +666,13 @@ void wakeup(void *chan) {
   for (p = proc; p < &proc[NPROC]; p++) {
     if (p != myproc()) {
       acquire(&p->lock);
-      if (p->state == SLEEPING && p->chan == chan) { p->state = RUNNABLE; }
+      if (p->state == SLEEPING && p->chan == chan) { 
+
+        acquire(&proc_qs[p->prio].lock);
+        p->state = RUNNABLE; 
+        enqueue_proc(proc_qs[p->prio], p);
+        release(&proc_qs[p->prio].lock);
+        }
       release(&p->lock);
     }
   }
