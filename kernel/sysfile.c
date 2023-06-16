@@ -741,6 +741,9 @@ uint64 sys_mmap(void) {
     dbg(" MMAP: node size=%d", node->size);
 
     if (node->size + offset < size) {
+      // TODO: handle given size larger than file size
+      // this is weird, cause we have to mmap with at most the file size
+      // but munmap takes multiple of page sizes
       iunlock(node);
       dbg(" MMAP: size unlucky\n");
       return MAP_FAILED;
