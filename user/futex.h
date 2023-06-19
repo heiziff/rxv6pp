@@ -26,6 +26,20 @@ using osdev_mutex_inner_t = std::atomic<osdev_mutex_underlying_t>;
 extern "C" {
 #endif
 
+struct osdev_mutex_t;
+//! having fun with linkage...
+typedef struct osdev_mutex_t osdev_mutex_t;
+
+/*!
+ * \brief wrap object to (hopefully) be ABI compatible
+ */
+struct osdev_mutex_t {
+    //! an atomic counter
+    osdev_mutex_inner_t inner;
+
+    //! \attention you can add more stuff here if you want
+};
+
 //! initialize mutex
 void osdev_mutex_init(osdev_mutex_t *mutex);
 //! lock mutex
