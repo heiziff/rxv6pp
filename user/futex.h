@@ -5,10 +5,6 @@
 #ifndef INCLUDED_user_futex_h
 #define INCLUDED_user_futex_h
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 //! not technically needed, but heavily suggested
 typedef unsigned long long osdev_mutex_underlying_t;
 
@@ -33,6 +29,10 @@ struct osdev_mutex_t {
     osdev_mutex_t& operator=(osdev_mutex_t&&) = delete;
 };
 
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 //! initialize mutex
