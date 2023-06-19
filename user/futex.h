@@ -12,22 +12,13 @@ typedef unsigned long long osdev_mutex_underlying_t;
 
 #include <stdbool.h>
 
-typedef _Atomic osdev_mutex_underlying_t osdev_mutex_t;
+typedef _Atomic osdev_mutex_underlying_t osdev_mutex_inner_t;
 
 #else
 
-//! \brief C++ struct for wrapping
-//! \attention disabled some C++ features to  lead to somewhat sane behavior
-//! \attention never instantiate this class directly, only ever via a pointer or to instantiate
-//! \attention only here for alignment/size purposes, ignore that
-struct osdev_mutex_t {
-    osdev_mutex_underlying_t inner;
-    osdev_mutex_t() = default;
-    osdev_mutex_t(const osdev_mutex_t&) = delete;
-    osdev_mutex_t(osdev_mutex_t&&) = delete;
-    osdev_mutex_t& operator=(const osdev_mutex_t&) = delete;
-    osdev_mutex_t& operator=(osdev_mutex_t&&) = delete;
-};
+#include <atomic>
+
+using osdev_mutex_inner_t = std::atomic<osdev_mutex_underlying_t>;
 
 #endif
 
