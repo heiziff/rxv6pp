@@ -210,7 +210,7 @@ void proc_freepagetable(pagetable_t pagetable, uint64 sz, taken_list *entry) {
   dbg(" PROC_FREEPGTBL: Unmapped trampoline\n");
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
   dbg(" PROC_FREEPGTBL: Unmapped trapframe\n");
-  
+
   dbg(" PROC_FREEPGTBL: Done freeing mmapped\n");
   uvmfree(pagetable, sz);
   dbg(" PROC_FREEPGTBL: Done uvmfree\n");
@@ -577,6 +577,33 @@ void wakeup(void *chan) {
       release(&p->lock);
     }
   }
+}
+
+// Atomically release futex lock and wait on futex.
+// Reacquires futex lock when awakened.
+void wait_on_futex(struct spinlock *futex_lock) {
+  struct proc *p = myproc();
+
+  acquire(&p->lock); //DOC: sleeplock1
+  release(futex_lock);
+
+  // Go to sleep.
+  p->state = WAITING_FUTEX;
+
+  sched();
+
+  // Reacquire original lock.
+  release(&p->lock);
+  acquire(futex_lock);
+}
+
+// wakeup process that is waiting on any futex
+void wakeup_on_futex(struct proc *p) {
+  if (p->state != WAITING_FUTEX) panic("wakeup_futex");
+
+  acquire(&p->lock);
+  p->state = RUNNABLE;
+  release(&p->lock);
 }
 
 // Kill the process with the given pid.

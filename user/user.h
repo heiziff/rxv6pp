@@ -44,6 +44,7 @@ void cxx(int);
 void term();
 int hello_kernel(int);
 int printPT(void);
+uint64 futex(void *, int, int);
 
 // ulib.c
 int stat(const char *, struct stat *);

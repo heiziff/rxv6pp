@@ -41,4 +41,5 @@ entry("term");
 entry("mmap");
 entry("munmap");
 entry("printPT");
+entry("futex");
 
