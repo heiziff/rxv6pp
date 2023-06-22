@@ -65,7 +65,7 @@ void futex_init(kernel_futex_t *futex) {
   // }
 }
 
-kernel_futex_t* find_unused_futex() {
+kernel_futex_t *find_unused_futex() {
   for (int i = 0; i < NFUTEX; i++) {
     acquire(&kernel_futexes[i].lock);
     if (!kernel_futexes[i].used) {
@@ -78,7 +78,7 @@ kernel_futex_t* find_unused_futex() {
 }
 
 // Get the futex for a given addr. Returns with futex lock held
-kernel_futex_t* find_futex_for_addr(uint64 pa) {
+kernel_futex_t *find_futex_for_addr(uint64 pa) {
   for (int i = 0; i < NFUTEX; i++) {
     acquire(&kernel_futexes[i].lock);
     if (kernel_futexes[i].used && kernel_futexes[i].pa == pa) {
@@ -108,7 +108,7 @@ uint64 sys_futex(void) {
     futex_init_completed = 1;
   }
 
-  kernel_futex_t *futex = (void*)0;
+  kernel_futex_t *futex = (void *)0;
 
   uint64 pa = walkaddr(p->pagetable, uaddr);
   if (pa == 0) goto bad;
@@ -120,7 +120,7 @@ uint64 sys_futex(void) {
     futex_init(futex);
     release(&futex->lock);
     return 0;
-  
+
   case FUTEX_WAIT:
     if (uaddr == val) {
       futex = find_futex_for_addr(pa);
@@ -153,6 +153,6 @@ uint64 sys_futex(void) {
   return 0;
 
 bad:
-  if (futex != (void*)0 && futex->used && holding(&futex->lock)) release(&futex->lock);
+  if (futex != (void *)0 && futex->used && holding(&futex->lock)) release(&futex->lock);
   return -1;
 }

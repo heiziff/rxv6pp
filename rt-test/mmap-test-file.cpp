@@ -19,7 +19,7 @@ void main() {
   assert(fd > 0);
 
   void *va = mmap((void *)0, strlen(string) + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  assert(va != (void*)MAP_FAILED);
+  assert(va != (void *)MAP_FAILED);
 
   assert(strcmp((char *)va, string) == 0);
 
@@ -40,7 +40,7 @@ void main() {
   assert(fd > 0);
 
   va = mmap((void *)0, strlen(string2) + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  assert(va != (void*) MAP_FAILED);
+  assert(va != (void *)MAP_FAILED);
 
   assert(strcmp((char *)va, string2) == 0);
 
@@ -59,8 +59,8 @@ void main() {
   close(fd);
   fd = open("tes3", O_RDONLY);
 
-  va              = mmap((void *)0, 5, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  assert(va != (void*)MAP_FAILED);
+  va = mmap((void *)0, 5, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  assert(va != (void *)MAP_FAILED);
   ((char *)va)[4] = 0;
   assert(strcmp((char *)va, result) == 0);
 

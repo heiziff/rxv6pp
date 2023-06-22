@@ -459,7 +459,7 @@ uint64 mmap_find_space(pagetable_t pagetable, uint64 begin, int n_pages) {
 
 uint bmap(struct inode *ip, uint bn);
 
-taken_list* add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
+taken_list *add_mapping(struct proc *p, uint64 va, int n_pages, int shared) {
   // add the new mapping to proc struct
   taken_list *entry = p->mmaped_pages;
   while (entry->used) {
@@ -486,13 +486,13 @@ void dump_taken_list(taken_list *list) {
   dbg("-TAKEN LIST DUMP: ---------------------------------\n");
   do {
     if (list->used) {
-      dbg(" Used entry: va=%p, n_pages=%d, file=%p, shared=%d\n", list->va, list->n_pages, list->file, list->shared);
-    }
-    else {
+      dbg(" Used entry: va=%p, n_pages=%d, file=%p, shared=%d\n", list->va, list->n_pages,
+        list->file, list->shared);
+    } else {
       dbg(" Unused entry: %p\n", list->va);
     }
     list++;
-    if ((uint64) list % PGSIZE == 0) {
+    if ((uint64)list % PGSIZE == 0) {
       list = (list - 1)->next;
       dbg(" At page end with next %p!\n", list);
     }
@@ -511,10 +511,8 @@ int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr
   // Remove used flag from mappings in taken list
   // TODO: Refactor add_mapping into two functions
   taken_list *l = mmaped_pages;
-  while (1)
-  {
-    if (l->va == addr && l->used)
-    {
+  while (1) {
+    if (l->va == addr && l->used) {
       l->used = 0;
       dbg(" MUNMAP: found mapping with va %p and %d pages\n", l->va, l->n_pages);
 
@@ -522,7 +520,8 @@ int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr
       // size of the mapping. If we only free a bit of the mapping, we would not
       // know that there is a left over mapping when the process dies => panic: freewalk
       if (l->n_pages != n_pages) {
-        dbg(" MUNMAP: passed size (%d pages) does not match the size of the mapping (%d pages)\n", n_pages, l->n_pages);
+        dbg(" MUNMAP: passed size (%d pages) does not match the size of the mapping (%d pages)\n",
+          n_pages, l->n_pages);
         return -1;
       }
       break;
@@ -530,11 +529,11 @@ int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr
 
     l++;
     if ((uint64)l % PGSIZE == 0) {
-      if ((l-1)->next == 0) {
+      if ((l - 1)->next == 0) {
         dbg(" MUNMAP: invalid address\n");
         return -1;
       };
-      l = (l-1)->next;
+      l = (l - 1)->next;
     }
   }
 
@@ -545,7 +544,7 @@ int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr
     l->file->mapped_count--;
   }
   for (int i = 0; i < n_pages; i++) {
-    uint64 va = addr + i * PGSIZE;
+    uint64 va  = addr + i * PGSIZE;
     pte_t *pte = walk(pagetable, va, 0);
     if (*pte != 0 && *pte & PTE_V) {
       if (!(*pte & PTE_U)) continue;
@@ -555,7 +554,8 @@ int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr
         dbg(" MUNMAP: before begin_op\n");
         begin_op();
         still_shared = l->file->mapped_count >= 1 ? 1 : 0;
-        dbg(" MUNMAP: mapped_count on page %d, old is %d, new is %d, still shared: %d\n", i, l->file->mapped_count + 1, l->file->mapped_count, still_shared);
+        dbg(" MUNMAP: mapped_count on page %d, old is %d, new is %d, still shared: %d\n", i,
+          l->file->mapped_count + 1, l->file->mapped_count, still_shared);
 
         // file writeback for shared and file backed mappings
         if (!still_shared) {
@@ -568,7 +568,7 @@ int sys_munmap_impl(pagetable_t pagetable, taken_list *mmaped_pages, uint64 addr
             dbg(" MUNMAP: Finished bmap\n");
             if (disk_addr == 0) break;
             dbg(" MUNMAP: bread begin\n");
-            struct buf* cur_buf = bread(l->file->ip->dev, disk_addr);
+            struct buf *cur_buf = bread(l->file->ip->dev, disk_addr);
             dbg(" MUNMAP: bread end, got buf %p\n", cur_buf);
             if (!cur_buf->valid) {
               dbg(" MUNMAP: not even valid lol\n");
@@ -693,19 +693,17 @@ uint64 sys_mmap(void) {
 
           // Unmap old maybe overlapping mappings
           taken_list *l = p->mmaped_pages;
-          while (1)
-          {
-            if (va >= l->va && va < l->va + l->n_pages * PAGE_SIZE){
+          while (1) {
+            if (va >= l->va && va < l->va + l->n_pages * PAGE_SIZE) {
               sys_munmap_impl(p->pagetable, p->mmaped_pages, l->va, l->n_pages * PAGE_SIZE);
-            } 
-            else if (l->va >= va && l->va < va + n_pages * PAGE_SIZE){
+            } else if (l->va >= va && l->va < va + n_pages * PAGE_SIZE) {
               sys_munmap_impl(p->pagetable, p->mmaped_pages, l->va, l->n_pages * PAGE_SIZE);
             }
 
             l++;
             if ((uint64)l % PGSIZE == 0) {
-              if ((l-1)->next == 0) break;
-              l = (l-1)->next;
+              if ((l - 1)->next == 0) break;
+              l = (l - 1)->next;
             }
           }
         }
@@ -734,7 +732,7 @@ uint64 sys_mmap(void) {
       return MAP_FAILED;
     }
 
-    if(node->valid == 0) {
+    if (node->valid == 0) {
       iunlock(node);
       return MAP_FAILED;
     }
@@ -822,5 +820,3 @@ uint64 sys_mmap(void) {
 
   return va;
 }
-
-

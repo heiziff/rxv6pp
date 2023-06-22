@@ -11,8 +11,8 @@ void main() {
   int fd = open("hahahah.txt", O_CREATE | O_RDWR);
   assert(fd > 0);
 
-  char string[]  = "Halo ich mag mmap seeehr dolll";
-  int size       = strlen(string) + 1;
+  char string[] = "Halo ich mag mmap seeehr dolll";
+  int size      = strlen(string) + 1;
   printf("strlen: %d\n", strlen(string) + 1);
 
   assert(write(fd, string, size) == size);
@@ -30,5 +30,5 @@ void main() {
 
   // printf(va);
 
-  // if ((uint64)va != MAP_FAILED) munmap(va, strlen(string) + 1);  
+  // if ((uint64)va != MAP_FAILED) munmap(va, strlen(string) + 1);
 }

@@ -96,7 +96,7 @@ struct buf *bread(uint dev, uint blockno) {
 
 // Write b's contents to disk.  Must be locked.
 void bwrite(struct buf *b) {
-  if(!holdingsleep(&b->lock)) {
+  if (!holdingsleep(&b->lock)) {
     // panic("bwrite");
     // acquiresleep(&b->lock);
   }

@@ -26,7 +26,7 @@ void main() {
   {
     printf("starting parent!\n");
     void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
-    assert ((uint64) va != MAP_FAILED);
+    assert((uint64)va != MAP_FAILED);
     int keine_ahnung = 0;
     if (wait(&keine_ahnung) < 0) {
       printf("HÄ?\n");
@@ -50,7 +50,7 @@ void main() {
     for (int i = 0; i < 1000000; i++)
       ;
     void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
-    assert ((uint64) va != MAP_FAILED);
+    assert((uint64)va != MAP_FAILED);
     printf("child: %p\n", va);
     assert(strcmp((char *)va, string) == 0);
 

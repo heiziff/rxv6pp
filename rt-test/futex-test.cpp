@@ -21,13 +21,13 @@ void main() {
 
   printf("file war nett: fd %d\n", fd);
 
-  void* va = mmap(0, 32, PROT_RW, MAP_SHARED, fd, 0);
-  printf("va: \"%s\"\n", (char*)va);
+  void *va = mmap(0, 32, PROT_RW, MAP_SHARED, fd, 0);
+  printf("va: \"%s\"\n", (char *)va);
 
   printf("mmap war maybe nett: %p\n", va);
 
   printf("osdev_mutex_t size: %d\n", sizeof(osdev_mutex_t));
-  osdev_mutex_t *m = (osdev_mutex_t*) va;
+  osdev_mutex_t *m = (osdev_mutex_t *)va;
   osdev_mutex_init(m);
 
   printf("osdev_mutex war nett\n");
@@ -37,13 +37,15 @@ void main() {
   {
     osdev_mutex_lock(m);
     printf("parent got mutex... ");
-    for (int i = 0; i < 1000000; i++);
+    for (int i = 0; i < 1000000; i++)
+      ;
     printf("parent done\n");
     osdev_mutex_unlock(m);
   } else if (pid == 0) { // child
     osdev_mutex_lock(m);
     printf("child got mutex... ");
-    for (int i = 0; i < 1000000; i++);
+    for (int i = 0; i < 1000000; i++)
+      ;
     printf("child done\n");
     osdev_mutex_unlock(m);
   } else {

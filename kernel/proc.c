@@ -264,7 +264,7 @@ int growproc(int n) {
   return 0;
 }
 
-taken_list* add_mapping(struct proc *p, uint64 va, int n_pages, int shared);
+taken_list *add_mapping(struct proc *p, uint64 va, int n_pages, int shared);
 
 // Create a new process, copying the parent.
 // Sets up child kernel stack to return as if from fork() system call.
@@ -288,10 +288,8 @@ int fork(void) {
   acquire(&p->lock);
 
   taken_list *l = p->mmaped_pages;
-  while (1)
-  {
-    if (l->used) 
-    {
+  while (1) {
+    if (l->used) {
       // copy taken_list entry from parent to child if its used
       taken_list *new_entry = add_mapping(np, l->va, l->n_pages, l->shared);
       dbg(" FORK: file %p, mapped_count %d\n", l->file, l->file->mapped_count);
@@ -301,7 +299,7 @@ int fork(void) {
       // add the actual mapping to the pagetable
       for (int i = 0; i < l->n_pages; i++) {
         pte_t *pte = walk(p->pagetable, l->va + i * PGSIZE, 0);
-        uint64 pa = walkaddr(p->pagetable, l->va + i * PGSIZE);
+        uint64 pa  = walkaddr(p->pagetable, l->va + i * PGSIZE);
         dbg(" FORK: mapping va %p to pa %p\n", new_entry->va, pa);
         mappages(np->pagetable, new_entry->va + i * PGSIZE, PGSIZE, pa, PTE_FLAGS(*pte));
       }
@@ -309,10 +307,8 @@ int fork(void) {
 
     l++;
     if ((uint64)l % PGSIZE == 0) {
-      if ((l-1)->next == 0) {
-        break;
-      };
-      l = (l-1)->next;
+      if ((l - 1)->next == 0) { break; };
+      l = (l - 1)->next;
     }
   }
 

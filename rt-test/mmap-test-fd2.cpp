@@ -25,7 +25,7 @@ void main() {
   close(fd);
   printf("closing initial fd\n");
 
-  fd       = open("mmap-fd2.txt", O_RDONLY);
+  fd = open("mmap-fd2.txt", O_RDONLY);
   assert(fd > 0);
   void *va = mmap(0, size, PROT_RW, MAP_SHARED, fd, 0);
   close(fd);

@@ -101,7 +101,7 @@ void printk(char *fmt, ...) {
   if (locking) release(&pr.lock);
 }
 
-void dbg(char* fmt, ...) {
+void dbg(char *fmt, ...) {
 #define KERNEL_DEBUG 0
 #if KERNEL_DEBUG
   va_list args;

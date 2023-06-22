@@ -10,9 +10,7 @@ void osdev_mutex_init(osdev_mutex_t *mutex) {
 void osdev_mutex_lock(osdev_mutex_t *mutex) {
   osdev_mutex_t other = {0};
   while (!atomic_compare_exchange_weak(&mutex->inner, &other.inner, 1)) {
-    if (futex(&mutex->inner, FUTEX_WAIT, 1) == 0) {
-      return;
-    }
+    if (futex(&mutex->inner, FUTEX_WAIT, 1) == 0) { return; }
     other.inner = 0;
   }
   // while (!atomic_compare_exchange_weak(&mutex->inner, &other.inner, 1)) other.inner = 0;
