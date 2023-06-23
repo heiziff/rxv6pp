@@ -19,6 +19,7 @@ futex_queue_item *futex_queue_find_space(futex_queue_t *q) {
 }
 
 int futex_queue_enqueue(futex_queue_t *q, struct proc *proc) {
+  printk(" FUTEX: enqueueing pid %d\n", proc->pid);
   futex_queue_item *itm = futex_queue_find_space(q);
   if (itm == 0) return -1;
 
@@ -48,16 +49,18 @@ struct proc *futex_queue_dequeue(futex_queue_t *q) {
   if (q->size == 0) q->first = q->first->next;
   q->size--;
 
+  printk(" FUTEX: dequeueing pid %d\n", itm->proc->pid);
   return itm->proc;
 }
 
 int futex_init_completed = 0;
 kernel_futex_t kernel_futexes[NFUTEX];
 
-void futex_init(kernel_futex_t *futex) {
+void futex_init(kernel_futex_t *futex, uint64 pa) {
   if (futex->waiting.page == 0) futex->waiting.page = kalloc();
   memset(futex->waiting.page, 0, PGSIZE);
   futex->used = 1;
+  futex->pa   = pa;
 
   // futex_queue_t *t = futex->waiting;
   // while(!t->used) {
@@ -116,15 +119,19 @@ uint64 sys_futex(void) {
   switch (futex_op) {
   case FUTEX_INIT:
     futex = find_unused_futex();
+    printk(" FUTEX_INIT futex %p, ", futex);
     if (!futex) panic("futex_init");
-    futex_init(futex);
+    futex_init(futex, pa);
+    printk(" pa %p\n", (void *)futex->pa);
     release(&futex->lock);
     return 0;
 
   case FUTEX_WAIT:
     if (uaddr == val) {
       futex = find_futex_for_addr(pa);
+      printk(" FUTEX_WAIT futex %p, ", futex);
       if (!futex) goto bad;
+      printk(" pa %p\n", (void *)futex->pa);
       futex_queue_enqueue(&futex->waiting, p);
       wait_on_futex(&futex->lock);
       release(&futex->lock);
@@ -136,7 +143,9 @@ uint64 sys_futex(void) {
 
   case FUTEX_WAKE:
     futex = find_futex_for_addr(pa);
+    printk(" FUTEX_WAKE futex %p, ", futex);
     if (!futex) goto bad;
+    printk(" FUTEX_WAKE %p\n", (void *)futex->pa);
     uint32 wakeups = min(val, futex->waiting.size);
     for (int i = 0; i < wakeups; i++) {
       struct proc *p = futex_queue_dequeue(&futex->waiting);

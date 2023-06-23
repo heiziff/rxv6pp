@@ -36,19 +36,23 @@ void main() {
   if (pid > 0) // parent
   {
     osdev_mutex_lock(m);
-    printf("parent got mutex... ");
-    for (int i = 0; i < 1000000; i++)
-      ;
+    printf("parent %d got mutex (child %d)... ", getpid(), pid);
+    int unused = 0;
+    for (int i = 0; i < 100000000; i++) { unused += unused + i; }
+    printf("irrelevant: %d\n", unused);
     printf("parent done\n");
     osdev_mutex_unlock(m);
+
   } else if (pid == 0) { // child
     osdev_mutex_lock(m);
     printf("child got mutex... ");
-    for (int i = 0; i < 1000000; i++)
-      ;
+    int unused = 0;
+    for (int i = 0; i < 100000000; i++) { unused += unused + i; }
+    printf("irrelevant: %d\n", unused);
     printf("child done\n");
     osdev_mutex_unlock(m);
   } else {
+    
     printf("dod weil fork\n");
     assert(0);
   }
