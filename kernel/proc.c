@@ -364,6 +364,19 @@ void reparent(struct proc *p) {
 // An exited process remains in the zombie state
 // until its parent calls wait().
 void exit(int status) {
+
+  printk(" PRO LOCK MEM:\n");
+  for (int i = 0; i < 5; i++) {
+    struct proc *p = &proc[i];
+    acquire(&p->lock);
+    int pid = p->pid;
+    uint64 lockaddr = (uint64) &p->lock;
+    release(&p->lock);
+    if (pid == 0) continue;
+    printk("   %d: %p\n", pid, lockaddr);
+  }
+  printk(" \n");
+
   struct proc *p = myproc();
 
   if (p == initproc) panic("init exiting");
@@ -382,18 +395,25 @@ void exit(int status) {
   end_op();
   p->cwd = 0;
 
+  printk(" EXIT: pid %d\n", p->pid);
+
   acquire(&wait_lock);
 
   // Give any children to init.
   reparent(p);
 
   // Parent might be sleeping in wait().
+  printk(" EXIT: wakeup pid %d\n", p->parent->pid);
   wakeup(p->parent);
 
+  printk(" EXIT: acquire p %d lock\n", p->pid);
   acquire(&p->lock);
+  printk(" EXIT: acquired p lock %p\n", &p->lock);
 
   p->xstate = status;
   p->state  = ZOMBIE;
+
+  printk(" EXIT: parent locked: %d\n", p->parent->lock.locked);
 
   release(&wait_lock);
 
@@ -417,7 +437,9 @@ int wait(uint64 addr) {
     for (pp = proc; pp < &proc[NPROC]; pp++) {
       if (pp->parent == p) {
         // make sure the child isn't still in exit() or swtch().
+        printk(" WAIT: before acquire for lock of pid %d\n", pp->pid);
         acquire(&pp->lock);
+        printk(" WAIT: after acquire\n");
 
         havekids = 1;
         if (pp->state == ZOMBIE) {
@@ -568,7 +590,9 @@ void wakeup(void *chan) {
 
   for (p = proc; p < &proc[NPROC]; p++) {
     if (p != myproc()) {
+      // printk(" WAKEUP: pid=%d (%d) before acquire\n", p->pid, p->state);
       acquire(&p->lock);
+      // printk(" WAKEUP: pid=%d after acquire\n", p->pid);
       if (p->state == SLEEPING && p->chan == chan) { p->state = RUNNABLE; }
       release(&p->lock);
     }
@@ -579,6 +603,7 @@ void wakeup(void *chan) {
 // Reacquires futex lock when awakened.
 void wait_on_futex(struct spinlock *futex_lock) {
   struct proc *p = myproc();
+  printk(" WAIT_FUTEX: p %d with lock %p\n", p->pid, &p->lock);
 
   acquire(&p->lock); //DOC: sleeplock1
   release(futex_lock);
@@ -595,9 +620,11 @@ void wait_on_futex(struct spinlock *futex_lock) {
 
 // wakeup process that is waiting on any futex
 void wakeup_on_futex(struct proc *p) {
-  if (p->state != WAITING_FUTEX) panic("wakeup_futex");
+  if (p == myproc()) panic("wakeup_futex: same proc");
 
   acquire(&p->lock);
+  if (p->state != WAITING_FUTEX) panic("wakeup_futex: not waiting");
+  printk(" WAKE_FUTEX: p %d with lock %p\n", p->pid, &p->lock);
   p->state = RUNNABLE;
   release(&p->lock);
 }

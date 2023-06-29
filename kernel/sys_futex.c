@@ -133,7 +133,10 @@ uint64 sys_futex(void) {
     return 0;
 
   case FUTEX_WAIT:
-    //if (*((int*)uaddr) != val) goto bad;
+    if (*((int*)pa) != val) {
+      printk(" FUTEX_WAIT: word value changed (%d -> %d)\n", val, *(int*)uaddr);
+      goto bad;
+    }
 
     futex = find_futex_for_addr(pa);
     printk(" FUTEX_WAIT futex %p, ", futex);

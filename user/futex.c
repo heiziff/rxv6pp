@@ -13,7 +13,7 @@ void osdev_mutex_lock(osdev_mutex_t *mutex) {
     int res = futex(&mutex->inner, FUTEX_WAIT, 1);
     printf("futex res %d\n", res);
     if (res == 0) {
-      printf("pid %d 1USRWRAPPER locked mutex: %d\n", getpid(), mutex->inner);
+      printf("pid x 1USRWRAPPER locked mutex: %d\n", mutex->inner);
       return;
     }
     other.inner = 0;
@@ -23,10 +23,10 @@ void osdev_mutex_lock(osdev_mutex_t *mutex) {
 }
 //! unlock mutex
 void osdev_mutex_unlock(osdev_mutex_t *mutex) {
-  printf("pid %d trying to unlock futex: %d, ", getpid(), mutex->inner);
-  atomic_store(&mutex->inner, 0);
+  printf("trying to unlock futex: %d, ", mutex->inner);
   printf("after futex: %d\n", mutex->inner);
   uint64 wakeups = futex(&mutex->inner, FUTEX_WAKE, 1);
+  if (!wakeups) atomic_store(&mutex->inner, 0);
   printf("%d wakeups\n", wakeups);
 }
 

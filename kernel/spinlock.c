@@ -12,8 +12,10 @@ void initlock(struct spinlock *lk, char *name) {
 // Loops (spins) until the lock is acquired.
 void acquire(struct spinlock *lk) {
   push_off(); // disable interrupts to avoid deadlock.
-  if (holding(lk)) panic("acquire");
-
+  if (holding(lk)) {
+    printk("ACQUIRE: p=%d, p lock %p", myproc()->pid, lk);
+    panic("acquire");
+  }
   // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
   //   a5 = 1
   //   s1 = &lk->locked

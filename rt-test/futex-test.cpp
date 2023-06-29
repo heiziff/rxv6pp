@@ -21,6 +21,7 @@ void main() {
 
 
   void *va = mmap(0, 32, PROT_RW, MAP_SHARED, fd, 0);
+  close(fd);
 
   osdev_mutex_t *m = (osdev_mutex_t *)va;
   osdev_mutex_init(m);
@@ -35,20 +36,21 @@ void main() {
     int unused = 0;
     for (int i = 0; i < 100000000; i++) { unused += unused + i; }
     printf("irrelevant: %d\n", unused);
-    printf("parent done\n");
+    printf("parent unlocking\n");
     osdev_mutex_unlock(m);
+    printf("p done!\n");
 
   } else if (pid == 0) { // child
     printf("c\n");
     osdev_mutex_lock(m);
-    printf("child got mutex... ");
+    printf("child got mutex... \n");
     int unused = 0;
     for (int i = 0; i < 100000000; i++) { unused += unused + i; }
     printf("irrelevant: %d\n", unused);
     printf("child done\n");
     osdev_mutex_unlock(m);
+    printf("c fertig");
   } else {
-    
     printf("dod weil fork\n");
     assert(0);
   }
