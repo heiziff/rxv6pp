@@ -24,6 +24,7 @@ int futex_queue_enqueue(futex_queue_t *q, struct proc *proc) {
   if (itm == 0) return -1;
 
   itm->used = 1;
+  itm->proc = proc;
   if (q->size == 0) {
     q->first = itm;
     q->last  = itm;
@@ -49,6 +50,7 @@ struct proc *futex_queue_dequeue(futex_queue_t *q) {
   if (q->size == 0) q->first = q->first->next;
   q->size--;
 
+  printk("dequeued %p\n", itm);
   printk(" FUTEX: dequeueing pid %d\n", itm->proc->pid);
   return itm->proc;
 }
@@ -105,6 +107,10 @@ uint64 sys_futex(void) {
   argint(1, &futex_op);
   argint(2, &val);
 
+  printk(" SYS_FUTEX: inner at %p\n", uaddr);
+
+  //int *futex_val = (int*) uaddr;
+
   if (!futex_init_completed) {
     printk(" futex init all\n");
     for (int i = 0; i < NFUTEX; i++) { initlock(&kernel_futexes[i].lock, "futex_lock"); }
@@ -127,29 +133,28 @@ uint64 sys_futex(void) {
     return 0;
 
   case FUTEX_WAIT:
-    if (uaddr == val) {
-      futex = find_futex_for_addr(pa);
-      printk(" FUTEX_WAIT futex %p, ", futex);
-      if (!futex) goto bad;
-      printk(" pa %p\n", (void *)futex->pa);
-      futex_queue_enqueue(&futex->waiting, p);
-      wait_on_futex(&futex->lock);
-      release(&futex->lock);
-      return 0;
-      break;
-    }
-    goto bad;
+    //if (*((int*)uaddr) != val) goto bad;
+
+    futex = find_futex_for_addr(pa);
+    printk(" FUTEX_WAIT futex %p, ", futex);
+    if (!futex) goto bad;
+    printk(" pa %p for proc %d\n", (void *)futex->pa, p->pid);
+    futex_queue_enqueue(&futex->waiting, p);
+    wait_on_futex(&futex->lock);
+    release(&futex->lock);
+    return 0;
     break;
 
   case FUTEX_WAKE:
     futex = find_futex_for_addr(pa);
     printk(" FUTEX_WAKE futex %p, ", futex);
     if (!futex) goto bad;
-    printk(" FUTEX_WAKE %p\n", (void *)futex->pa);
+    printk(" FUTEX_WAKE %p for proc %d\n", futex->pa, p->pid);
     uint32 wakeups = min(val, futex->waiting.size);
     for (int i = 0; i < wakeups; i++) {
-      struct proc *p = futex_queue_dequeue(&futex->waiting);
-      wakeup_on_futex(p);
+      struct proc *woke_p = futex_queue_dequeue(&futex->waiting);
+      printk(" SYS_FUTEX: dequeud %d\n", woke_p->pid);
+      wakeup_on_futex(woke_p);
     }
     release(&futex->lock);
     return wakeups;

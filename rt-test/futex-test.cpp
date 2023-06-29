@@ -19,22 +19,17 @@ void main() {
   close(fd);
   fd = open("futex_tst.txt", O_CREATE | O_RDWR);
 
-  printf("file war nett: fd %d\n", fd);
 
   void *va = mmap(0, 32, PROT_RW, MAP_SHARED, fd, 0);
-  printf("va: \"%s\"\n", (char *)va);
 
-  printf("mmap war maybe nett: %p\n", va);
-
-  printf("osdev_mutex_t size: %d\n", sizeof(osdev_mutex_t));
   osdev_mutex_t *m = (osdev_mutex_t *)va;
   osdev_mutex_init(m);
 
-  printf("osdev_mutex war nett\n");
-
+  printf("before fork\n");
   int pid = fork();
   if (pid > 0) // parent
   {
+    printf("p\n");
     osdev_mutex_lock(m);
     printf("parent %d got mutex (child %d)... ", getpid(), pid);
     int unused = 0;
@@ -44,6 +39,7 @@ void main() {
     osdev_mutex_unlock(m);
 
   } else if (pid == 0) { // child
+    printf("c\n");
     osdev_mutex_lock(m);
     printf("child got mutex... ");
     int unused = 0;

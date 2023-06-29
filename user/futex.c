@@ -18,7 +18,7 @@ void osdev_mutex_lock(osdev_mutex_t *mutex) {
     }
     other.inner = 0;
   }
-  printf("pid %d 2USRWRAPPER locked mutex: %d\n", getpid(), mutex->inner);
+  printf("2USRWRAPPER pid %d locked mutex: %d\n", getpid(), mutex->inner);
   // while (!atomic_compare_exchange_weak(&mutex->inner, &other.inner, 1)) other.inner = 0;
 }
 //! unlock mutex
