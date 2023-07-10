@@ -1,6 +1,9 @@
 #include "memlayout.h"
 #include "defs.h"
 
+//TODO: Change
+#include "net/rtl8139.h"
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -176,6 +179,8 @@ pagetable_t proc_pagetable(struct proc *p) {
 
   p->mmaped_pages = kalloc();
   memset(p->mmaped_pages, 0, PGSIZE);
+
+  //rtl8139__init();
 
   return pagetable;
 }

@@ -34,6 +34,7 @@ OBJS = \
   $K/virtio_disk.o  \
   $K/cxxtest.o \
   $K/terminate.o \
+  $K/net/rtl8139.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -187,12 +188,14 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef CPUS
-CPUS := 3
+#CPUS := 3
 endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+QEMUOPTS += -netdev user,id=netdev1 -device rtl8139,netdev=netdev1
+#QEMUOPTS += -nic user,model=rtl8139
 QEMUOPTS.drive = -drive file=fs.img,if=none,format=raw,id=x0
 
 # QEMU GDB DBG:
