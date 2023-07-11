@@ -2,6 +2,10 @@
 #ifndef INCLUDED_RTL8139_H
 #define INCLUDED_RTL8139_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 #define RTL_MMIO_BASE 0x40000000
 #define RTL_MMIO_SIZE 0x100
@@ -62,9 +66,12 @@ enum RTL81319_tsd_bits {
 
 //void* rtl8139_rx_buf;
 
-void* RTL81319_pci_config_space;
 
 bool_t rtl8139__init(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 //INCLUDED_RTL8139_H

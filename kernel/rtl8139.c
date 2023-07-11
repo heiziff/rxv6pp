@@ -1,15 +1,16 @@
-#include "../defs.h"
-#include "../memlayout.h"
+#include "defs.h"
 #include "rtl8139.h"
 
 
+uint8 RxBuffer[8192 + 16];
+
 // static uint8 rtl_byte_r(uint8 reg) {
-// 	return *(RTL_MMIO_BASE + reg);
+	// return *((uint8*) RTL_MMIO_BASE + reg);
 // }
 
-// static void rtl_byte_w(uint8 reg, uint8 val) {
-// 	*(RTL_MMIO_BASE + reg) = val;
-// }
+static void rtl_byte_w(uint8 reg, uint8 val) {
+	*((uint8*) ((uint64) RTL_MMIO_BASE + reg)) = val;
+}
 
 static uint16 rtl_word_r(uint8 reg) {
 	return *((uint16*)((uint64) RTL_MMIO_BASE + reg));
@@ -19,13 +20,13 @@ static void rtl_word_w(uint8 reg, uint16 val) {
 	*((uint16 *)((uint64) RTL_MMIO_BASE + reg)) = val;
 }
 
-// static uint32 rtl_dword_r(uint8 reg) {
-	// return *( (uint32 *)((uint64) RTL_MMIO_BASE + reg));
-// }
+static uint32 rtl_dword_r(uint8 reg) {
+	return *( (uint32 *)((uint64) RTL_MMIO_BASE + reg));
+}
 
-// static void rtl_dword_w(uint8 reg, uint32 val) {
-// 	*((uint32 *)(RTL_MMIO_BASE + reg)) = val;
-// }
+static void rtl_dword_w(uint8 reg, uint32 val) {
+	*((uint32 *)((uint64) RTL_MMIO_BASE + reg)) = val;
+}
 
 static uint32 rtl8139_rx_handler() {
   // writing bit clears interrupt
@@ -54,7 +55,28 @@ bool_t rtl8139__init()
   //printk(" rtl_init: mapped");
   //if (res) panic("rtl_init: failed mapping");
 
-  uint8 mac_addr = (uint8) *((uint8*)RTL_MMIO_BASE + MAC0);
+  // Turn on rtl8139
+  rtl_byte_w(Config1, 0x0);
+
+  // Software reset to restore default values
+  rtl_byte_w(ChipCmd, 0x10);
+
+  // Spin waiting for device reset (or not :D )
+  //while(rtl_byte_r(ChipCmd) & 0x10);
+
+  // init receive buffer (and have fun with C)
+  rtl_dword_w(RxBuf, *((uint32*) (&RxBuffer)));
+
+  // Set interrupt mask register
+  rtl_word_w(IntrMask, INT_ROK | INT_TOK);
+
+  // Configure receive buffer (1 is wrap bit, f for enabled packets (we allow all because we want friends to talk to :) ))
+  rtl_dword_w(RxConfig, 0xf | (1 << 7)); // (1 << 7) is the WRAP bit, 0xf is AB+AM+APM+AAP
+
+  // Enable receive and transmit
+  rtl_byte_w(ChipCmd, 0xc);
+
+  uint64 mac_addr = rtl_dword_r(MAC0);
   printk(" RTL_INIT: Got MAC: %p\n", mac_addr);
 
   // TODO: I think this should be 2 pages

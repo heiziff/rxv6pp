@@ -34,7 +34,7 @@ OBJS = \
   $K/virtio_disk.o  \
   $K/cxxtest.o \
   $K/terminate.o \
-  $K/net/rtl8139.o \
+  $K/rtl8139.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin

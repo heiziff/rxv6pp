@@ -1,4 +1,8 @@
 
+
+#ifndef INCLUDED_PCI_H
+#define INCLUDED_PCI_H
+
 enum PCI_config_space_registers {
   VendorID      = 0x00,
   DeviceID      = 0x02,
@@ -14,3 +18,5 @@ enum PCI_config_space_registers {
   BAR4          = 0x20,
   BAR5          = 0x24,
 };
+
+#endif 

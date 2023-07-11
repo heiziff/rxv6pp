@@ -1,7 +1,9 @@
 #include "memlayout.h"
 #include "defs.h"
 #include "pci.h"
-#include "net/rtl8139.h"
+#include "rtl8139.h"
+
+void* RTL81319_pci_config_space;
 
 /*
  * the kernel's page table.
@@ -35,6 +37,7 @@ pagetable_t kvmmake(void) {
     uint16* val = ((uint16*) (PCI_CONFIG_SPACE + 256 * i));
     if(*val == 0x10ec) RTL81319_pci_config_space = (void*) val;
   }
+  *((uint32*)(RTL81319_pci_config_space + BAR1)) |= 0x40000000;
   *((uint16*)(RTL81319_pci_config_space + Command)) |= 0b0110;
   uint16 status = *((uint16*)(RTL81319_pci_config_space + Status));
   uint8 header = *((uint8*)(RTL81319_pci_config_space + HeaderType));
