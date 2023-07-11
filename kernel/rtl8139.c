@@ -5,7 +5,7 @@
 uint8 RxBuffer[8192 + 16];
 
 // static uint8 rtl_byte_r(uint8 reg) {
-	// return *((uint8*) RTL_MMIO_BASE + reg);
+// 	return *((uint8*) RTL_MMIO_BASE + reg);
 // }
 
 static void rtl_byte_w(uint8 reg, uint8 val) {
@@ -76,6 +76,7 @@ bool_t rtl8139__init()
   // Enable receive and transmit
   rtl_byte_w(ChipCmd, 0xc);
 
+
   uint64 mac_addr = rtl_dword_r(MAC0);
   printk(" RTL_INIT: Got MAC: %p\n", mac_addr);
 
@@ -90,6 +91,7 @@ bool_t rtl8139__init()
 
 uint32 rtl8139_intr() {
 	// Check the reason for this interrupt
+	printk(" GET INTERRUPTED!!!!!!!!!!!!");
 	uint16 isr = rtl_word_r(IntrStatus);
 	if (!(isr & INT_ROK) && !(isr & INT_TOK)) {
 		panic("rtl8139: error interrupt");

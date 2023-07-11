@@ -37,8 +37,16 @@ pagetable_t kvmmake(void) {
     uint16* val = ((uint16*) (PCI_CONFIG_SPACE + 256 * i));
     if(*val == 0x10ec) RTL81319_pci_config_space = (void*) val;
   }
+
+  // Set mmio register adress
   *((uint32*)(RTL81319_pci_config_space + BAR1)) |= 0x40000000;
+  // Enable memory space bar and enable pci bus mastering
   *((uint16*)(RTL81319_pci_config_space + Command)) |= 0b0110;
+  // Set interrupt line and pin (?)
+  *((uint32*)(RTL81319_pci_config_space + IntrStuff)) |= ((1 << 8) | (0x03));
+
+
+
   uint16 status = *((uint16*)(RTL81319_pci_config_space + Status));
   uint8 header = *((uint8*)(RTL81319_pci_config_space + HeaderType));
   uint16 command = *((uint16*)(RTL81319_pci_config_space + Command));

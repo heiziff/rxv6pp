@@ -17,6 +17,7 @@ enum PCI_config_space_registers {
   BAR3          = 0x1C,
   BAR4          = 0x20,
   BAR5          = 0x24,
+  IntrStuff     = 0x3C,
 };
 
 #endif 

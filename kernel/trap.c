@@ -208,9 +208,14 @@ int devintr() {
     // acknowledge the software interrupt by clearing
     // the SSIP bit in sip.
     w_sip(r_sip() & ~2);
+    
+    // printk(" software INTR\n");
+    // rtl8139_intr();
 
     return 2;
   } else {
+    // printk(" unrecognized INTR\n");
+    rtl8139_intr();
     return 0;
   }
 }
