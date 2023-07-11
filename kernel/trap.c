@@ -187,6 +187,8 @@ int devintr() {
     } else if (irq == VIRTIO0_IRQ) {
       virtio_disk_intr();
     } else if (irq) {
+      //TODO: find out what plic does
+      
       pr_notice("unexpected interrupt irq=%d\n", irq);
     }
 

@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 
+
 // Physical memory layout
 
 // qemu -machine virt is set up like this,
@@ -36,6 +37,12 @@ extern "C" {
 // virtio mmio interface
 #define VIRTIO0 0x10001000
 #define VIRTIO0_IRQ 1
+
+// rtl8139 pci mmio
+#define RTL8139IO 0x40000000
+
+// pci config space
+#define PCI_CONFIG_SPACE 0x30000000
 
 // core local interruptor (CLINT), which contains the timer.
 #define CLINT 0x2000000L

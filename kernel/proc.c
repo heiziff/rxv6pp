@@ -2,7 +2,7 @@
 #include "defs.h"
 
 //TODO: Change
-#include "net/rtl8139.h"
+//#include "net/rtl8139.h"
 
 struct cpu cpus[NCPU];
 

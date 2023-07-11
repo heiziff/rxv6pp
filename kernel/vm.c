@@ -1,5 +1,7 @@
 #include "memlayout.h"
 #include "defs.h"
+#include "pci.h"
+#include "net/rtl8139.h"
 
 /*
  * the kernel's page table.
@@ -22,6 +24,31 @@ pagetable_t kvmmake(void) {
 
   // virtio mmio disk interface
   kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
+
+  // pci rtl8139 mapping
+  kvmmap(kpgtbl, RTL8139IO, RTL8139IO, PGSIZE, PTE_R | PTE_W);
+  kvmmap(kpgtbl, PCI_CONFIG_SPACE, PCI_CONFIG_SPACE, PAGE_SIZE, PTE_R | PTE_W);
+  // printk(" hello i have the %p\n", *((uint16*) (PCI_CONFIG_SPACE)));
+  // printk(" and the %p\n", *((uint16*) (PCI_CONFIG_SPACE + 2)));
+  printk(" Good morning, checking in on all pci config spaces\n");
+  for(uint64 i = 0; i < 256; i++) {
+    uint16* val = ((uint16*) (PCI_CONFIG_SPACE + 256 * i));
+    if(*val == 0x10ec) RTL81319_pci_config_space = (void*) val;
+  }
+  *((uint16*)(RTL81319_pci_config_space + Command)) |= 0b0110;
+  uint16 status = *((uint16*)(RTL81319_pci_config_space + Status));
+  uint8 header = *((uint8*)(RTL81319_pci_config_space + HeaderType));
+  uint16 command = *((uint16*)(RTL81319_pci_config_space + Command));
+  uint16 class_code = *((uint16*)(RTL81319_pci_config_space + ClassCode));
+  uint16 bar0 = *((uint16*)(RTL81319_pci_config_space + BAR0));
+  uint16 bar1 = *((uint16*)(RTL81319_pci_config_space + BAR1));
+  uint16 bar2 = *((uint16*)(RTL81319_pci_config_space + BAR2));
+  uint16 bar3 = *((uint16*)(RTL81319_pci_config_space + BAR3));
+  uint16 bar4 = *((uint16*)(RTL81319_pci_config_space + BAR4));
+  uint16 bar5 = *((uint16*)(RTL81319_pci_config_space + BAR5));
+  printk(" Finish setup, got status=%p, header=%p, command=%p, class code=%p, bar0=%p, bar1=%p, bar2= %p, bar3=%p, bar4=%p, bar5=%p\n", status, header, command, class_code, bar0, bar1, bar2, bar3, bar4, bar5);
+
+  rtl8139__init();
 
   // PLIC
   kvmmap(kpgtbl, PLIC, PLIC, 0x400000, PTE_R | PTE_W);

@@ -1,13 +1,17 @@
 
-#define RTL_MMIO_BASE 0x400000fe
+#ifndef INCLUDED_RTL8139_H
+#define INCLUDED_RTL8139_H
+
+
+#define RTL_MMIO_BASE 0x40000000
 #define RTL_MMIO_SIZE 0x100
 #define RTL_MEM_ADDR ((uint64)1 << 30)
 
 enum RTL8139_registers {
   MAC0             = 0x00,       // Ethernet hardware address
   MAR0             = 0x08,       // Multicast filter
-  TxStatus0        = 0x10,       // Transmit status (Four 32bit registers)
-  TxAddr0          = 0x20,       // Tx descriptors (also four 32bit)
+  TxStatus0        = 0x10,       // Transmit status (Four 32bit registers) (TSD)
+  TxAddr0          = 0x20,       // Tx descriptors (also four 32bit) (TSAD)
   RxBuf            = 0x30,
   RxEarlyCnt       = 0x34,
   RxEarlyStatus    = 0x36,
@@ -44,13 +48,23 @@ enum RTL8139_registers {
 };
 
 // Values for Interrupt mask register
-enum RTL8139_int_mask_bits {
-  ROK              = (1<<0),
-  RER              = (1<<1),
-  TOK              = (1<<2),
-  TER              = (1<<3),
+enum RTL8139_int_bits {
+  INT_ROK              = (1<<0),
+  INT_RER              = (1<<1),
+  INT_TOK              = (1<<2),
+  INT_TER              = (1<<3),
 };
 
-void *rtl8139_rx_buf;
+enum RTL81319_tsd_bits {
+  TSD_OWN             = (1 << 13),
+  TSD_TOK             = (1 << 15),
+};
+
+//void* rtl8139_rx_buf;
+
+void* RTL81319_pci_config_space;
 
 bool_t rtl8139__init(void);
+
+#endif
+//INCLUDED_RTL8139_H
