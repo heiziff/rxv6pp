@@ -1,8 +1,13 @@
 #include "defs.h"
 #include "rtl8139.h"
+#include "string.c"
 
 
-uint8 RxBuffer[8192 + 16];
+uint8 rx_buffer[8192 + 16];
+uint32 rx_buffer_offset = 0;
+
+int cur_tx_descriptor = 0;
+struct spinlock tx_descriptor_lock;
 
 // static uint8 rtl_byte_r(uint8 reg) {
 // 	return *((uint8*) RTL_MMIO_BASE + reg);
@@ -65,7 +70,7 @@ bool_t rtl8139__init()
   //while(rtl_byte_r(ChipCmd) & 0x10);
 
   // init receive buffer (and have fun with C)
-  rtl_dword_w(RxBuf, *((uint32*) (&RxBuffer)));
+  rtl_dword_w(RxBuf, *((uint32*) (&rx_buffer)));
 
   // Set interrupt mask register
   rtl_word_w(IntrMask, INT_ROK | INT_TOK);
@@ -106,4 +111,30 @@ uint32 rtl8139_intr() {
 		return 1;
 	}
   return 0;
+}
+
+void rtl8139_send_packet(void * data, uint32_t len) {
+    // First, copy the data to a physically contiguous chunk of memory
+    // TODO: Check if len is larger than 1 page and think of something X)
+    // FIXME: Oh god, this has to be 32 bit adress x)
+    // TODO: Free this at some point? (maybe always use same transfer area? that might be bad with multiple requests)
+    void * transfer_data = kalloc();
+    memcpy(transfer_data, data, len);
+
+    // Second, fill in physical address of data, and length
+    acquire(&tx_descriptor_lock);
+
+    rtl_dword_w(TxAddr0 + cur_tx_descriptor * 4, (uint32) transfer_data);
+    rtl_dword_w(TxStatus0 + cur_tx_descriptor * 4, len);
+    cur_tx_descriptor = (cur_tx_descriptor + 1) % 4;
+
+    release(&tx_descriptor_lock);
+
+}
+
+void rtl8139_recv_packet() {
+  uint16 *packet_walker = (uint16*) (rx_buffer + rx_buffer_offset);
+
+  // packet length at offset one
+  uint16 packet_len = *(packet_walker + 1);
 }

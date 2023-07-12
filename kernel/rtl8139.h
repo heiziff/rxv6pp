@@ -20,7 +20,7 @@ enum RTL8139_registers {
   RxEarlyCnt       = 0x34,
   RxEarlyStatus    = 0x36,
   ChipCmd          = 0x37,
-  RxBufPtr         = 0x38,
+  RxBufPtr         = 0x38,        // 2 Byte?
   RxBufAddr        = 0x3A,
   IntrMask         = 0x3C,
   IntrStatus       = 0x3E,
