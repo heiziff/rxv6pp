@@ -77,6 +77,8 @@ void rtl8139_get_mac(uint8 *buf);
 
 void rtl8139_send_packet(void *data, uint32 len);
 
+void rtl8139_recv_packet();
+
 #ifdef __cplusplus
 }
 #endif

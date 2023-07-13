@@ -1,6 +1,5 @@
 #include "defs.h"
 #include "rtl8139.h"
-#include "string.c"
 
 uint8 mac_addr[6];
 
@@ -108,8 +107,8 @@ bool_t rtl8139__init()
 
 
   // Save MAC Address
-  uint32_t mac_part1 = rtl_dword_r(MAC0);
-  uint16_t mac_part2 = rtl_dword_r(MAC0 + 4);
+  uint32 mac_part1 = rtl_dword_r(MAC0);
+  uint16 mac_part2 = rtl_dword_r(MAC0 + 4);
   mac_addr[0] = mac_part1 >> 0;
   mac_addr[1] = mac_part1 >> 8;
   mac_addr[2] = mac_part1 >> 16;
@@ -127,7 +126,7 @@ void rtl8139_get_mac(uint8 *buf) {
 
 
 
-void rtl8139_send_packet(void * data, uint32_t len) {
+void rtl8139_send_packet(void * data, uint32 len) {
     // First, copy the data to a physically contiguous chunk of memory
     // TODO: Check if len is larger than 1 page and think of something X)
     // FIXME: Oh god, this has to be 32 bit adress x)
@@ -138,7 +137,7 @@ void rtl8139_send_packet(void * data, uint32_t len) {
     // Second, fill in physical address of data, and length
     acquire(&tx_descriptor_lock);
 
-    rtl_dword_w(TxAddr0 + cur_tx_descriptor * 4, (uint32) transfer_data);
+    rtl_dword_w(TxAddr0 + cur_tx_descriptor * 4, *((uint32*) &transfer_data));
     rtl_dword_w(TxStatus0 + cur_tx_descriptor * 4, len);
     cur_tx_descriptor = (cur_tx_descriptor + 1) % 4;
 
@@ -150,4 +149,5 @@ void rtl8139_recv_packet() {
 
   // packet length at offset one
   uint16 packet_len = *(packet_walker + 1);
+  (void) packet_len;
 }

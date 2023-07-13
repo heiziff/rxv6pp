@@ -1,16 +1,15 @@
 #include "ethernet.h"
 #include "rtl8139.h"
-#include "string.c"
 #include "defs.h"
 
 
 // Flip byte ordering to network byte order 16 bit (htons)
 uint16 hton16(uint16 h_val) {
-    uint16 lower = (type & 0xFF) << 8;
-    uint16 high = (type >> 8) & 0xFF;
+    uint16 lower = (h_val & 0xFF) << 8;
+    uint16 higher = (h_val >> 8) & 0xFF;
     uint16 net_val = lower | higher;
 
-    return net_val
+    return net_val;
 }
 
 // Flip byte ordering to host byte order 16 bit (ntohs)
@@ -26,7 +25,7 @@ void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 lengt
 
     // Fill in src MAC and dst MAC
     // this is needed because of member length
-    uint8 src_mac[6]
+    uint8 src_mac[6];
     rtl8139_get_mac(src_mac);
     memcpy(frame->src_mac, src_mac, MAC_SIZE);
     memcpy(frame->dst_mac, dst_mac, MAC_SIZE);
