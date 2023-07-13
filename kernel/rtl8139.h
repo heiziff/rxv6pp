@@ -1,4 +1,3 @@
-
 #ifndef INCLUDED_RTL8139_H
 #define INCLUDED_RTL8139_H
 
@@ -16,11 +15,11 @@ enum RTL8139_registers {
   MAR0             = 0x08,       // Multicast filter
   TxStatus0        = 0x10,       // Transmit status (Four 32bit registers) (TSD)
   TxAddr0          = 0x20,       // Tx descriptors (also four 32bit) (TSAD)
-  RxBuf            = 0x30,
+  RxBuf            = 0x30,       // RBSTART: begin of Rx Ringbuffer
   RxEarlyCnt       = 0x34,
   RxEarlyStatus    = 0x36,
   ChipCmd          = 0x37,
-  RxBufPtr         = 0x38,        // 2 Byte?
+  RxBufPtr         = 0x38,        // CAPR: Current read pointer to (offset?) in Rx Buffer
   RxBufAddr        = 0x3A,
   IntrMask         = 0x3C,
   IntrStatus       = 0x3E,
@@ -66,8 +65,17 @@ enum RTL81319_tsd_bits {
 
 //void* rtl8139_rx_buf;
 
+typedef struct tx_descriptor_s {
+  uint32 address;
+  uint32 length;
+} tx_descriptor;
+
 
 bool_t rtl8139__init(void);
+
+void rtl8139_get_mac(uint8 *buf);
+
+void rtl8139_send_packet(void *data, uint32 len);
 
 #ifdef __cplusplus
 }

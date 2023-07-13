@@ -2,10 +2,13 @@
 #include "rtl8139.h"
 #include "string.c"
 
+uint8 mac_addr[6];
 
 uint8 rx_buffer[8192 + 16];
 uint32 rx_buffer_offset = 0;
 
+// TODO: Maybe more work needs to be done on these descriptors, I don't fully understand them
+//tx_descriptor tx_descr[4];
 int cur_tx_descriptor = 0;
 struct spinlock tx_descriptor_lock;
 
@@ -34,9 +37,12 @@ static void rtl_dword_w(uint8 reg, uint32 val) {
 }
 
 static uint32 rtl8139_rx_handler() {
+  // TODO: evtl noch um die anderen Interrupts kümmern (siehe seite 9 Programmer manual)
   // writing bit clears interrupt
   rtl_word_w(IntrStatus, INT_ROK);
   printk(" rx_handler: call");
+
+  rtl8139_recv_packet();
 
   return 0;
 }
@@ -49,6 +55,25 @@ static uint32 rtl8139_tx_handler() {
   //uint32 status = rtl_dword_r(TxStatus0 + (desc *4) & (TSD_OWN | TSD_TOK));
   // TODO: Check for finished descriptors and free them? Is this needed?????
 
+  return 0;
+}
+
+uint32 rtl8139_intr() {
+	// Check the reason for this interrupt
+	printk(" GET INTERRUPTED!!!!!!!!!!!!");
+	uint16 isr = rtl_word_r(IntrStatus);
+	if (!(isr & INT_ROK) && !(isr & INT_TOK)) {
+		panic("rtl8139: error interrupt");
+	}
+
+	if (isr & INT_ROK)
+		return rtl8139_rx_handler();
+	else if (isr & INT_TOK)
+		return rtl8139_tx_handler();
+	else {
+		panic("rtl8139: how?");
+		return 1;
+	}
   return 0;
 }
 
@@ -82,36 +107,25 @@ bool_t rtl8139__init()
   rtl_byte_w(ChipCmd, 0xc);
 
 
-  uint64 mac_addr = rtl_dword_r(MAC0);
-  printk(" RTL_INIT: Got MAC: %p\n", mac_addr);
+  // Save MAC Address
+  uint32_t mac_part1 = rtl_dword_r(MAC0);
+  uint16_t mac_part2 = rtl_dword_r(MAC0 + 4);
+  mac_addr[0] = mac_part1 >> 0;
+  mac_addr[1] = mac_part1 >> 8;
+  mac_addr[2] = mac_part1 >> 16;
+  mac_addr[3] = mac_part1 >> 24;
 
-  // TODO: I think this should be 2 pages
-  //rtl8139_rx_buf = kalloc();
-
-  uint16 mask = rtl_word_r(IntrMask);
-  printk(" RTL_INIT: Got IMR: %p\n", mask);
+  mac_addr[4] = mac_part2 >> 0;
+  mac_addr[5] = mac_part2 >> 8;
 
   return 0;
 }
 
-uint32 rtl8139_intr() {
-	// Check the reason for this interrupt
-	printk(" GET INTERRUPTED!!!!!!!!!!!!");
-	uint16 isr = rtl_word_r(IntrStatus);
-	if (!(isr & INT_ROK) && !(isr & INT_TOK)) {
-		panic("rtl8139: error interrupt");
-	}
-
-	if (isr & INT_ROK)
-		return rtl8139_rx_handler();
-	else if (isr & INT_TOK)
-		return rtl8139_tx_handler();
-	else {
-		panic("rtl8139: how?");
-		return 1;
-	}
-  return 0;
+void rtl8139_get_mac(uint8 *buf) {
+  memcpy(buf, mac_addr, 6);
 }
+
+
 
 void rtl8139_send_packet(void * data, uint32_t len) {
     // First, copy the data to a physically contiguous chunk of memory
@@ -129,7 +143,6 @@ void rtl8139_send_packet(void * data, uint32_t len) {
     cur_tx_descriptor = (cur_tx_descriptor + 1) % 4;
 
     release(&tx_descriptor_lock);
-
 }
 
 void rtl8139_recv_packet() {
