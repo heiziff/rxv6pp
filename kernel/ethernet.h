@@ -16,4 +16,10 @@ typedef struct __attribute__((__packed__)) ethernet_frame_s {
     // Data comes here
 } ethernet_frame;
 
+uint16 hton16(uint16 h_val);
+
+uint16 ntoh16(uint16 n_val);
+
+void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 length);
+
 #endif

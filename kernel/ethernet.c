@@ -24,10 +24,8 @@ void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 lengt
     uint8 *frame_data = ((uint8*) frame) + sizeof(ethernet_frame);
 
     // Fill in src MAC and dst MAC
-    // this is needed because of member length
-    uint8 src_mac[6];
-    rtl8139_get_mac(src_mac);
-    memcpy(frame->src_mac, src_mac, MAC_SIZE);
+    rtl8139_get_mac(frame->src_mac);
+    //memcpy(frame->src_mac, src_mac, MAC_SIZE);
     memcpy(frame->dst_mac, dst_mac, MAC_SIZE);
 
     frame->type = hton16(type);
