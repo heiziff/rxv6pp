@@ -196,7 +196,9 @@ endif
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
-QEMUOPTS += -netdev user,id=netdev1,hostfwd=tcp::5555-:1234 -device rtl8139,netdev=netdev1
+QEMUOPTS += -netdev user,id=meinrtl,hostfwd=tcp::5555-:1234 -device rtl8139,netdev=meinrtl
+#network monitoring :)
+QEMUOPTS += -object filter-dump,id=f1,netdev=meinrtl,file=dump.dat
 #QEMUOPTS += -qmp tcp:localhost:4321,server,nowait
 #QEMUOPTS += -nic user,model=rtl8139
 QEMUOPTS.drive = -drive file=fs.img,if=none,format=raw,id=x0

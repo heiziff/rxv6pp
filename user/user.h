@@ -15,6 +15,7 @@ extern "C" {
 #define NULL nullptr
 #include "kernel/mmap.h"
 
+#include "kernel/types.h"
 
 // system calls
 int fork(void);
@@ -45,6 +46,7 @@ void term();
 int hello_kernel(int);
 int printPT(void);
 uint64 futex(void *, int, int);
+void arp(void*);
 
 // ulib.c
 int stat(const char *, struct stat *);

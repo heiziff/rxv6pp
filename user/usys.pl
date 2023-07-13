@@ -42,4 +42,5 @@ entry("mmap");
 entry("munmap");
 entry("printPT");
 entry("futex");
+entry("arp");
 
