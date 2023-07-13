@@ -15,6 +15,11 @@ struct spinlock tx_descriptor_lock;
 // 	return *((uint8*) RTL_MMIO_BASE + reg);
 // }
 
+uint32 ptr64to32(void* ptr){
+  uint64 a = (uint64) ptr;
+  return (uint32) (a & 0x00000000FFFFFFFF);
+}
+
 static void rtl_byte_w(uint8 reg, uint8 val) {
 	*((uint8*) ((uint64) RTL_MMIO_BASE + reg)) = val;
 }
@@ -59,10 +64,11 @@ static uint32 rtl8139_tx_handler() {
 
 uint32 rtl8139_intr() {
 	// Check the reason for this interrupt
-	printk(" GET INTERRUPTED!!!!!!!!!!!!");
+	printk(" GET INTERRUPTED!!!!!!!!!!!!\n");
 	uint16 isr = rtl_word_r(IntrStatus);
 	if (!(isr & INT_ROK) && !(isr & INT_TOK)) {
-		panic("rtl8139: error interrupt");
+    printk(" rtl8139: interrupt is %p\n", isr);
+		//panic("rtl8139: error interrupt");
 	}
 
 	if (isr & INT_ROK)
@@ -70,7 +76,7 @@ uint32 rtl8139_intr() {
 	else if (isr & INT_TOK)
 		return rtl8139_tx_handler();
 	else {
-		panic("rtl8139: how?");
+		//panic("rtl8139: how?");
 		return 1;
 	}
   return 0;
@@ -78,8 +84,6 @@ uint32 rtl8139_intr() {
 
 bool_t rtl8139__init()
 {
-  printk(" rtl_init: call\n");
-
   //int res = mappages(myproc()->pagetable, RTL_MEM_ADDR, 0x100, RTL_MMIO_BASE, PTE_R | PTE_W);
   //printk(" rtl_init: mapped");
   //if (res) panic("rtl_init: failed mapping");
@@ -93,8 +97,13 @@ bool_t rtl8139__init()
   // Spin waiting for device reset (or not :D )
   //while(rtl_byte_r(ChipCmd) & 0x10);
 
-  // init receive buffer (and have fun with C)
-  rtl_dword_w(RxBuf, *((uint32*) (&rx_buffer)));
+  // uint32 tst = 0x10000000;
+  // uint32 tst2 = 0x80000000;
+  // printk(" %p, %p\n", tst, tst2);
+  printk(" rtl_init: rx buffer at %p -> %p\n", rx_buffer, ptr64to32(rx_buffer));
+
+  // init receive buffer
+  rtl_dword_w(RxBuf, ptr64to32(rx_buffer));
 
   // Set interrupt mask register
   rtl_word_w(IntrMask, INT_ROK | INT_TOK);
@@ -103,7 +112,7 @@ bool_t rtl8139__init()
   rtl_dword_w(RxConfig, 0xf | (1 << 7)); // (1 << 7) is the WRAP bit, 0xf is AB+AM+APM+AAP
 
   // Enable receive and transmit
-  rtl_byte_w(ChipCmd, 0xc);
+  rtl_byte_w(ChipCmd, 0x0c);
 
 
   // Save MAC Address
@@ -116,6 +125,8 @@ bool_t rtl8139__init()
 
   mac_addr[4] = mac_part2 >> 0;
   mac_addr[5] = mac_part2 >> 8;
+
+  printk(" Finish initing rtl, we have: mac=%p, imr=%p\n", *((uint64*) mac_addr), rtl_word_r(IntrMask));
 
   return 0;
 }
@@ -134,10 +145,17 @@ void rtl8139_send_packet(void * data, uint32 len) {
     void * transfer_data = kalloc();
     memcpy(transfer_data, data, len);
 
+    printk(" rtl_send: copied Data to %p\n", transfer_data);
+
+    for(uint64 i = 0; i < 0xFFFFFF; i++) {
+      printk(" i");
+    }
+    printk("\n");
+
     // Second, fill in physical address of data, and length
     acquire(&tx_descriptor_lock);
 
-    rtl_dword_w(TxAddr0 + cur_tx_descriptor * 4, *((uint32*) &transfer_data));
+    rtl_dword_w(TxAddr0 + cur_tx_descriptor * 4, ptr64to32(transfer_data));
     rtl_dword_w(TxStatus0 + cur_tx_descriptor * 4, len);
     cur_tx_descriptor = (cur_tx_descriptor + 1) % 4;
 

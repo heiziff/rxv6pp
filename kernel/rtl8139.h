@@ -79,6 +79,8 @@ void rtl8139_send_packet(void *data, uint32 len);
 
 void rtl8139_recv_packet();
 
+uint32 ptr64to32(void* ptr);
+
 #ifdef __cplusplus
 }
 #endif

@@ -19,6 +19,8 @@ uint16 ntoh16(uint16 n_val) {
 
 
 void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 length) {
+    printk(" ethernet_send: call\n");
+
     // TODO: Ethernet frames are always page size, which is kinda wasteful
     ethernet_frame *frame = (ethernet_frame*) kalloc();
     uint8 *frame_data = ((uint8*) frame) + sizeof(ethernet_frame);

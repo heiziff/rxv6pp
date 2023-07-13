@@ -11,6 +11,7 @@
 uint8 bcast_haddr[6] = {[0 ... 5] = 0xFF};
 
 void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {
+    printk(" arp_send: call\n");
     arp_packet *packet = (arp_packet*) kalloc();
 
     packet->hardware_type = hton16(HARDWARE_TYPE_ETH);
@@ -24,6 +25,7 @@ void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {
 
     // Set src mac:
     rtl8139_get_mac(packet->sender_haddr);
+    printk(" arp_send: Got mac: %p\n", *((uint64*)packet->sender_haddr));
 
     // Hardcode IP address (I hope this works)
     uint8 ip[4] = {10, 0, 2, 42};
@@ -34,6 +36,9 @@ void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {
 
     // Fill in target protocol addr
     memcpy(packet->target_paddr, target_paddr, IPV4_ADDR_SIZE);
+
+    printk(" apr_send: Done\n");
+
 
     ethernet_send_packet(bcast_haddr, (uint8*) packet, ETH_TYPE_ARP, sizeof(arp_packet));
 

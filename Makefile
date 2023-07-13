@@ -200,11 +200,10 @@ QEMUOPTS += -netdev user,id=meinrtl,hostfwd=tcp::5555-:1234 -device rtl8139,netd
 #network monitoring :)
 QEMUOPTS += -object filter-dump,id=f1,netdev=meinrtl,file=dump.dat
 #QEMUOPTS += -qmp tcp:localhost:4321,server,nowait
-#QEMUOPTS += -nic user,model=rtl8139
 QEMUOPTS.drive = -drive file=fs.img,if=none,format=raw,id=x0
 
 # QEMU GDB DBG:
-# QEMUOPTS += -S -gdb tcp::13120
+QEMUOPTS += -S -gdb tcp::13120
 CPUS = 1
 
 qemu: $K/kernel fs.img

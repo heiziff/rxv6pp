@@ -35,7 +35,10 @@ pagetable_t kvmmake(void) {
   printk(" Good morning, checking in on all pci config spaces\n");
   for(uint64 i = 0; i < 256; i++) {
     uint16* val = ((uint16*) (PCI_CONFIG_SPACE + 256 * i));
-    if(*val == 0x10ec) RTL81319_pci_config_space = (void*) val;
+    if(*val == 0x10ec) {
+      RTL81319_pci_config_space = (void*) val;
+      printk(" Got config space at %p\n", val);
+    }
   }
 
   // Set mmio register adress
@@ -43,7 +46,7 @@ pagetable_t kvmmake(void) {
   // Enable memory space bar and enable pci bus mastering
   *((uint16*)(RTL81319_pci_config_space + Command)) |= 0b0110;
   // Set interrupt line and pin (?)
-  *((uint32*)(RTL81319_pci_config_space + IntrStuff)) |= ((1 << 8) | (0x03));
+  //*((uint32*)(RTL81319_pci_config_space + IntrStuff)) |= ((1 << 8) | (0x03));
 
 
 
