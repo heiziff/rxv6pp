@@ -181,15 +181,15 @@ int devintr() {
 
     // irq indicates which device interrupted.
     int irq = plic_claim();
+    if (irq != UART0_IRQ) printk(" We found out %p\n", irq);
 
     if (irq == UART0_IRQ) {
       uartintr();
     } else if (irq == VIRTIO0_IRQ) {
       virtio_disk_intr();
-    } else if (irq) {
-      printk(" We found out %p\n", irq);
-      //TODO: find out what plic does
+    } else if (irq == RTL8139_IRQ) {
       rtl8139_intr();
+    } else if (irq) {
       pr_notice("unexpected interrupt irq=%d\n", irq);
     }
 
@@ -214,7 +214,7 @@ int devintr() {
 
     return 2;
   } else {
-    // printk(" unrecognized INTR\n");
+    printk(" unrecognized INTR\n");
     rtl8139_intr();
     return 0;
   }

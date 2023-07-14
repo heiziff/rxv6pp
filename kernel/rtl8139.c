@@ -52,7 +52,7 @@ static uint32 rtl8139_rx_handler() {
 }
 
 static uint32 rtl8139_tx_handler() {
-  rtl_word_w(IntrStatus, INT_ROK);
+  rtl_word_w(IntrStatus, INT_TOK);
   printk(" tx_handler: call");
 
   //uint8 desc = 0;
@@ -106,10 +106,18 @@ bool_t rtl8139__init()
   rtl_dword_w(RxBuf, ptr64to32(rx_buffer));
 
   // Set interrupt mask register
-  rtl_word_w(IntrMask, INT_ROK | INT_TOK);
+  // TODO: Change back
+  //rtl_word_w(IntrMask, INT_ROK | INT_TOK);
+  rtl_word_w(IntrMask, 0xFFFF);
 
   // Configure receive buffer (1 is wrap bit, f for enabled packets (we allow all because we want friends to talk to :) ))
   rtl_dword_w(RxConfig, 0xf | (1 << 7)); // (1 << 7) is the WRAP bit, 0xf is AB+AM+APM+AAP
+
+  uint32 tcr = rtl_dword_r(TxConfig);
+	tcr &= ~( (1 << 17) | (1 << 18) ); // Set loopback test mode bits to 00
+	tcr &= ~1; // Make sure the clear abort bit is not set
+	tcr |= (6 << 8); // Set MXDMA bits to 110 (1024 bytes)
+	rtl_dword_w(TxConfig, tcr);
 
   // Enable receive and transmit
   rtl_byte_w(ChipCmd, 0x0c);
@@ -138,28 +146,25 @@ void rtl8139_get_mac(uint8 *buf) {
 
 
 void rtl8139_send_packet(void * data, uint32 len) {
-    // First, copy the data to a physically contiguous chunk of memory
+    // Copy data to physical contigious memory
     // TODO: Check if len is larger than 1 page and think of something X)
     // FIXME: Oh god, this has to be 32 bit adress x)
     // TODO: Free this at some point? (maybe always use same transfer area? that might be bad with multiple requests)
     void * transfer_data = kalloc();
     memcpy(transfer_data, data, len);
 
-    printk(" rtl_send: copied Data to %p\n", transfer_data);
-
-    for(uint64 i = 0; i < 0xFFFFFF; i++) {
-      printk(" i");
-    }
-    printk("\n");
-
-    // Second, fill in physical address of data, and length
     acquire(&tx_descriptor_lock);
 
+    // Fill in physical address of data
     rtl_dword_w(TxAddr0 + cur_tx_descriptor * 4, ptr64to32(transfer_data));
     rtl_dword_w(TxStatus0 + cur_tx_descriptor * 4, len);
+    if (len & 0xFFFFF000) {
+      printk(" rtl_send: length too long\n");
+    }
     cur_tx_descriptor = (cur_tx_descriptor + 1) % 4;
 
     release(&tx_descriptor_lock);
+    printk(" rtl_send: Done\n");
 }
 
 void rtl8139_recv_packet() {

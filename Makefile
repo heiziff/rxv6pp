@@ -203,7 +203,7 @@ QEMUOPTS += -object filter-dump,id=f1,netdev=meinrtl,file=dump.dat
 QEMUOPTS.drive = -drive file=fs.img,if=none,format=raw,id=x0
 
 # QEMU GDB DBG:
-QEMUOPTS += -S -gdb tcp::13120
+#QEMUOPTS += -S -gdb tcp::13120
 CPUS = 1
 
 qemu: $K/kernel fs.img

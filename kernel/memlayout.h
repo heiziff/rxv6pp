@@ -40,6 +40,7 @@ extern "C" {
 
 // rtl8139 pci mmio
 #define RTL8139IO 0x40000000
+#define RTL8139_IRQ 3
 
 // pci config space
 #define PCI_CONFIG_SPACE 0x30000000

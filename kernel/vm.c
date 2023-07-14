@@ -45,22 +45,33 @@ pagetable_t kvmmake(void) {
   *((uint32*)(RTL81319_pci_config_space + BAR1)) |= 0x40000000;
   // Enable memory space bar and enable pci bus mastering
   *((uint16*)(RTL81319_pci_config_space + Command)) |= 0b0110;
-  // Set interrupt line and pin (?)
-  //*((uint32*)(RTL81319_pci_config_space + IntrStuff)) |= ((1 << 8) | (0x03));
+  // Disable the "Interrupt disable" bit
+  *((uint16*)(RTL81319_pci_config_space + Command)) &= (~(1 << 10));
+  *((uint16*)(RTL81319_pci_config_space + Command)) &= 0xFBFFF;
+
+  // MSI capabilites stuff
+  printk(" status: %p\n", *((uint16*) (RTL81319_pci_config_space + Status)));
+
+
+  // Set to use interrupt pin 1 and interrupt line 3
+  printk(" intrstuff: %p\n", *((uint16*) (RTL81319_pci_config_space + IntrStuff)));
+  *((uint32*)(RTL81319_pci_config_space + IntrStuff)) |= ((1 << 8) | (0x03));
+  uint32 inter = *((uint32*)(RTL81319_pci_config_space + IntrStuff));
+  printk(" pci_setup: Got interrupt stuff %p\n", inter);
 
 
 
-  uint16 status = *((uint16*)(RTL81319_pci_config_space + Status));
-  uint8 header = *((uint8*)(RTL81319_pci_config_space + HeaderType));
-  uint16 command = *((uint16*)(RTL81319_pci_config_space + Command));
-  uint16 class_code = *((uint16*)(RTL81319_pci_config_space + ClassCode));
-  uint16 bar0 = *((uint16*)(RTL81319_pci_config_space + BAR0));
-  uint16 bar1 = *((uint16*)(RTL81319_pci_config_space + BAR1));
-  uint16 bar2 = *((uint16*)(RTL81319_pci_config_space + BAR2));
-  uint16 bar3 = *((uint16*)(RTL81319_pci_config_space + BAR3));
-  uint16 bar4 = *((uint16*)(RTL81319_pci_config_space + BAR4));
-  uint16 bar5 = *((uint16*)(RTL81319_pci_config_space + BAR5));
-  printk(" Finish setup, got status=%p, header=%p, command=%p, class code=%p, bar0=%p, bar1=%p, bar2= %p, bar3=%p, bar4=%p, bar5=%p\n", status, header, command, class_code, bar0, bar1, bar2, bar3, bar4, bar5);
+  // uint16 status = *((uint16*)(RTL81319_pci_config_space + Status));
+  // uint8 header = *((uint8*)(RTL81319_pci_config_space + HeaderType));
+  // uint16 command = *((uint16*)(RTL81319_pci_config_space + Command));
+  // uint16 class_code = *((uint16*)(RTL81319_pci_config_space + ClassCode));
+  // uint16 bar0 = *((uint16*)(RTL81319_pci_config_space + BAR0));
+  // uint16 bar1 = *((uint16*)(RTL81319_pci_config_space + BAR1));
+  // uint16 bar2 = *((uint16*)(RTL81319_pci_config_space + BAR2));
+  // uint16 bar3 = *((uint16*)(RTL81319_pci_config_space + BAR3));
+  // uint16 bar4 = *((uint16*)(RTL81319_pci_config_space + BAR4));
+  // uint16 bar5 = *((uint16*)(RTL81319_pci_config_space + BAR5));
+  // printk(" Finish setup, got status=%p, header=%p, command=%p, class code=%p, bar0=%p, bar1=%p, bar2= %p, bar3=%p, bar4=%p, bar5=%p\n", status, header, command, class_code, bar0, bar1, bar2, bar3, bar4, bar5);
 
   rtl8139__init();
 
