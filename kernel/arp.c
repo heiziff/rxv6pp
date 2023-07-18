@@ -19,6 +19,7 @@ uint16 arp_table_current_entry = 0;
 void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {
   printk(" arp_send: call\n");
   arp_packet *packet = (arp_packet *)kalloc();
+  memset(packet, 0, 4096);
 
   packet->hardware_type = hton16(HARDWARE_TYPE_ETH);
   packet->protocol_type = hton16(PROTOCOL_TYPE_IPV4);
@@ -45,42 +46,42 @@ void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {
   ethernet_send_packet(bcast_haddr, (uint8 *)packet, ETH_TYPE_ARP, sizeof(arp_packet));
 }
 
-void arp_receive_packet(arp_packet* arp_packet, int len) {
-  printk(" ARP_RECEIVE: call\n");
+void arp_receive_packet(arp_packet* packet, int len) {
+  printk(" ARP_RECEIVE: call: src ip %d.%d.%d.%d\n", packet->sender_paddr[0], packet->sender_paddr[1], packet->sender_paddr[2], packet->sender_paddr[3]);
   char dst_hardware_addr[6];
   char dst_protocol_addr[4];
   // Save some packet field
-  memcpy(dst_hardware_addr, arp_packet->sender_haddr, 6);
-  memcpy(dst_protocol_addr, arp_packet->sender_paddr, 4);
+  memcpy(dst_hardware_addr, packet->sender_haddr, 6);
+  memcpy(dst_protocol_addr, packet->sender_paddr, 4);
   // Reply arp request, if the ip address matches(have to hard code the IP eveywhere, because I don't have dhcp yet)
-  if (ntoh16(arp_packet->operation) == ARP_OP_REQUEST) {
+  if (ntoh16(packet->operation) == ARP_OP_REQUEST) {
     //qemu_printf("Got ARP REQUEST......................");
-    if (memcmp(arp_packet->target_paddr, ip, 4)) {
+    if (memcmp(packet->target_paddr, ip, 4)) {
       printk(" ARP_RECEIVE: got request for our ip, answering with our mac\n");
 
       // Set source MAC address, IP address (hardcode the IP address as 10.2.2.3 until we really get one..)
-      rtl8139_get_mac(arp_packet->sender_haddr);
-      memcpy(&arp_packet->sender_paddr, ip, 4);
+      rtl8139_get_mac(packet->sender_haddr);
+      memcpy(&packet->sender_paddr, ip, 4);
 
       // Set destination MAC address, IP address
-      memcpy(arp_packet->target_haddr, dst_hardware_addr, 6);
-      memcpy(arp_packet->target_paddr, dst_protocol_addr, 4);
+      memcpy(packet->target_haddr, dst_hardware_addr, 6);
+      memcpy(packet->target_paddr, dst_protocol_addr, 4);
 
       // Set opcode
-      arp_packet->operation = hton16(ARP_OP_REPLY);
+      packet->operation = hton16(ARP_OP_REPLY);
 
       // Set lengths
-      arp_packet->haddr_len = 6;
-      arp_packet->paddr_len = 4;
+      packet->haddr_len = 6;
+      packet->paddr_len = 4;
 
       // Set hardware type
-      arp_packet->hardware_type = hton16(ETH_TYPE_ARP);
+      packet->hardware_type = hton16(HARDWARE_TYPE_ETH);
 
       // Set protocol = IPv4
-      arp_packet->protocol_type = hton16(ETH_TYPE_IP);
+      packet->protocol_type = hton16(PROTOCOL_TYPE_IPV4);
 
       // Now send it with ethernet
-      ethernet_send_packet((uint8 *)dst_hardware_addr, (uint8 *)arp_packet, sizeof(arp_packet), ETH_TYPE_ARP);
+      ethernet_send_packet((uint8 *)dst_hardware_addr, (uint8 *)packet, ETH_TYPE_ARP, sizeof(arp_packet));
 
       printk(" ARP_RECEIVE: paket sent\n");
 
@@ -89,12 +90,12 @@ void arp_receive_packet(arp_packet* arp_packet, int len) {
       //xxd(arp_packet, sizeof(arp_packet_t));
     }
   }
-  else if(ntoh16(arp_packet->operation) == ARP_OP_REPLY){
+  else if(ntoh16(packet->operation) == ARP_OP_REPLY){
       // May be we can handle the case where we get a reply after sending a request, but i don't think my os will ever need to do so...
       printk(" ARP_RECEIVE: received arp reply\n");
   }
   else {
-      printk(" Got unknown ARP, opcode = %d\n", arp_packet->operation);
+      printk(" Got unknown ARP, opcode = %d\n", packet->operation);
   }
 
   // Now, store the ip-mac address mapping relation
@@ -106,9 +107,6 @@ void arp_receive_packet(arp_packet* arp_packet, int len) {
   // Wrap around
   if(arp_table_current_entry >= 512)
       arp_table_current_entry = 0;
-
-    kfree(packet);
-
 }
 
 
