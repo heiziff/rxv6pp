@@ -1,9 +1,10 @@
 #include "defs.h"
 #include "rtl8139.h"
+#include "ethernet.h"
 
 uint8 mac_addr[6];
 
-uint8 rx_buffer[8192 + 16];
+uint8 rx_buffer[RX_BUF_SIZE + 16];
 uint32 rx_buffer_offset = 0;
 
 // TODO: Maybe more work needs to be done on these descriptors, I don't fully understand them
@@ -44,7 +45,7 @@ static uint32 rtl8139_rx_handler() {
   // TODO: evtl noch um die anderen Interrupts kümmern (siehe seite 9 Programmer manual)
   // writing bit clears interrupt
   rtl_word_w(IntrStatus, INT_ROK);
-  printk(" rx_handler: call");
+  printk(" rx_handler: call\n");
 
   rtl8139_recv_packet();
 
@@ -53,7 +54,7 @@ static uint32 rtl8139_rx_handler() {
 
 static uint32 rtl8139_tx_handler() {
   rtl_word_w(IntrStatus, INT_TOK);
-  printk(" tx_handler: call");
+  printk(" tx_handler: call\n");
 
   //uint8 desc = 0;
   //uint32 status = rtl_dword_r(TxStatus0 + (desc *4) & (TSD_OWN | TSD_TOK));
@@ -172,5 +173,18 @@ void rtl8139_recv_packet() {
 
   // packet length at offset one
   uint16 packet_len = *(packet_walker + 1);
-  (void) packet_len;
+  
+  void* packet = kalloc();
+  memcpy(packet, packet_walker + 2, packet_len);
+
+  ethernet_recv_packet(packet, packet_len);
+
+  kfree(packet);
+
+  // Bit hacking to be 4 byte aligned
+  rx_buffer_offset = (rx_buffer_offset + packet_len + 4 + 3) & ~(0b011);
+
+  rx_buffer_offset %= RX_BUF_SIZE;
+
+  rtl_word_w(RxBuf, rx_buffer_offset - 0x10);
 }

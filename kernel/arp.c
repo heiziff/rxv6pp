@@ -39,6 +39,8 @@ void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {
 
     ethernet_send_packet(bcast_haddr, (uint8*) packet, ETH_TYPE_ARP, sizeof(arp_packet));
 
+    kfree(packet);
+
 }
 
 uint64 sys_arp(void) {

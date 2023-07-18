@@ -22,4 +22,6 @@ uint16 ntoh16(uint16 n_val);
 
 void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 length);
 
+void ethernet_recv_packet(ethernet_frame *frame, uint32 length);
+
 #endif

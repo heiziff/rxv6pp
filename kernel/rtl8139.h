@@ -10,6 +10,8 @@ extern "C" {
 #define RTL_MMIO_SIZE 0x100
 #define RTL_MEM_ADDR ((uint64)1 << 30)
 
+#define RX_BUF_SIZE 8192
+
 enum RTL8139_registers {
   MAC0             = 0x00,       // Ethernet hardware address
   MAR0             = 0x08,       // Multicast filter

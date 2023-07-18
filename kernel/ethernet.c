@@ -42,9 +42,11 @@ void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 lengt
 
 void ethernet_recv_packet(ethernet_frame *frame, uint32 length) {
     uint16 type = ntoh16(frame->type);
+    printk(" Ethernet_recv: call\n");
 
     switch(type){
         case ETH_TYPE_ARP:
+            printk(" ethernet_recv: call arp\n");
             break;
         case ETH_TYPE_IP:
             break;
