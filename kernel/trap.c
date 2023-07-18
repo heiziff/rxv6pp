@@ -181,7 +181,6 @@ int devintr() {
 
     // irq indicates which device interrupted.
     int irq = plic_claim();
-    if (irq != UART0_IRQ) printk(" We found out %p\n", irq);
 
     if (irq == UART0_IRQ) {
       uartintr();
@@ -208,14 +207,9 @@ int devintr() {
     // acknowledge the software interrupt by clearing
     // the SSIP bit in sip.
     w_sip(r_sip() & ~2);
-    
-    // printk(" software INTR\n");
-    // rtl8139_intr();
 
     return 2;
   } else {
-    printk(" unrecognized INTR\n");
-    rtl8139_intr();
     return 0;
   }
 }
