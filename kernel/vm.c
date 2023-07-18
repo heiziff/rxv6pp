@@ -55,7 +55,7 @@ pagetable_t kvmmake(void) {
 
   // Set to use interrupt pin 1 and interrupt line 3
   printk(" intrstuff: %p\n", *((uint16*) (RTL81319_pci_config_space + IntrStuff)));
-  *((uint32*)(RTL81319_pci_config_space + IntrStuff)) |= ((1 << 8) | (0x03));
+  *((uint32*)(RTL81319_pci_config_space + IntrStuff)) |= ((1 << 8) | (RTL8139_IRQ));
   uint32 inter = *((uint32*)(RTL81319_pci_config_space + IntrStuff));
   printk(" pci_setup: Got interrupt stuff %p\n", inter);
 

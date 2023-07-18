@@ -21,6 +21,7 @@ extern "C" {
 // 0C000000 -- PLIC
 // 10000000 -- uart0
 // 10001000 -- virtio disk
+// 40000000 -- RTL8139 network card
 // 80000000 -- boot ROM jumps here in machine mode
 //             -kernel loads the kernel here
 // unused RAM after 80000000.
@@ -40,7 +41,7 @@ extern "C" {
 
 // rtl8139 pci mmio
 #define RTL8139IO 0x40000000
-#define RTL8139_IRQ 3
+#define RTL8139_IRQ 0x21
 
 // pci config space
 #define PCI_CONFIG_SPACE 0x30000000
@@ -55,7 +56,8 @@ extern "C" {
 #define PLIC_PRIORITY (PLIC + 0x0)
 #define PLIC_PENDING (PLIC + 0x1000)
 #define PLIC_MENABLE(hart) (PLIC + 0x2000 + (hart)*0x100)
-#define PLIC_SENABLE(hart) (PLIC + 0x2080 + (hart)*0x100)
+#define PLIC_SENABLE_0_31(hart) (PLIC + 0x2080 + (hart)*0x100)
+#define PLIC_SENABLE_32_63(hart) (PLIC + 0x2084 + (hart)*0x100)
 #define PLIC_MPRIORITY(hart) (PLIC + 0x200000 + (hart)*0x2000)
 #define PLIC_SPRIORITY(hart) (PLIC + 0x201000 + (hart)*0x2000)
 #define PLIC_MCLAIM(hart) (PLIC + 0x200004 + (hart)*0x2000)
