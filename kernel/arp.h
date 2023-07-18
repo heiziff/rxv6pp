@@ -7,6 +7,11 @@
 #define HARDWARE_TYPE_ETH 0x1
 #define PROTOCOL_TYPE_IPV4 0x0800
 
+#define IPV4_ADDR_SIZE 4
+
+#define ARP_OP_REQUEST 1
+#define ARP_OP_REPLY 2
+
 
 // from https://en.wikipedia.org/wiki/Address_Resolution_Protocol#Packet_structure
 typedef struct __attribute__((__packed__)) arp_packet_s {
