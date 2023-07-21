@@ -60,29 +60,7 @@ void arp_receive_packet(arp_packet* packet, int len) {
     if (memcmp(packet->target_paddr, ip, 4)) {
       printk(" ARP_RECEIVE: got request for our ip, answering with our mac\n");
 
-      // Set source MAC address, IP address (hardcode the IP address as 10.2.2.3 until we really get one..)
-      rtl8139_get_mac(packet->sender_haddr);
-      memcpy(&packet->sender_paddr, ip, 4);
-
-      // Set destination MAC address, IP address
-      memcpy(packet->target_haddr, dst_hardware_addr, 6);
-      memcpy(packet->target_paddr, dst_protocol_addr, 4);
-
-      // Set opcode
-      packet->operation = hton16(ARP_OP_REPLY);
-
-      // Set lengths
-      packet->haddr_len = 6;
-      packet->paddr_len = 4;
-
-      // Set hardware type
-      packet->hardware_type = hton16(HARDWARE_TYPE_ETH);
-
-      // Set protocol = IPv4
-      packet->protocol_type = hton16(PROTOCOL_TYPE_IPV4);
-
-      // Now send it with ethernet
-      ethernet_send_packet((uint8 *)dst_hardware_addr, (uint8 *)packet, ETH_TYPE_ARP, sizeof(arp_packet));
+      arp_send_packet((uint8*)dst_hardware_addr, (uint8*)dst_protocol_addr);
 
       printk(" ARP_RECEIVE: paket sent\n");
 
