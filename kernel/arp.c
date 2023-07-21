@@ -5,8 +5,6 @@
 #include "defs.h"
 
 
-uint8 bcast_haddr[6] = {[0 ... 5] = 0xFF};
-
 uint8 ip[4] = {10, 0, 2, 42};
 
 typedef struct arp_table_entry_s {
@@ -16,6 +14,14 @@ typedef struct arp_table_entry_s {
 
 arp_table_entry arp_table[512];
 uint16 arp_table_current_entry = 0;
+
+uint8 *arp_lookup(uint8* ip_address) {
+  for (int i = 0; i < 512; i++) {
+    if (memcmp(ip_address, arp_table[i].ip_addr, 4)) {
+      return arp_table[i].mac_addr;
+    }
+  }
+}
 
 void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {
   printk(" arp_send: call\n");
@@ -56,28 +62,23 @@ void arp_receive_packet(arp_packet* packet, int len) {
   memcpy(dst_protocol_addr, packet->sender_paddr, 4);
   // Reply arp request, if the ip address matches(have to hard code the IP eveywhere, because I don't have dhcp yet)
   if (ntoh16(packet->operation) == ARP_OP_REQUEST) {
-    //qemu_printf("Got ARP REQUEST......................");
     if (memcmp(packet->target_paddr, ip, 4)) {
       printk(" ARP_RECEIVE: got request for our ip, answering with our mac\n");
 
       arp_send_packet((uint8*)dst_hardware_addr, (uint8*)dst_protocol_addr);
 
       printk(" ARP_RECEIVE: paket sent\n");
-
-      // For debug:
-      //qemu_printf("Replied Arp, the reply looks like this\n");
-      //xxd(arp_packet, sizeof(arp_packet_t));
     }
   }
   else if(ntoh16(packet->operation) == ARP_OP_REPLY){
-      // May be we can handle the case where we get a reply after sending a request, but i don't think my os will ever need to do so...
+      //TODO: implement
       printk(" ARP_RECEIVE: received arp reply\n");
   }
   else {
-      printk(" Got unknown ARP, opcode = %d\n", packet->operation);
+      printk(" Got unknown ARP, opcode = %d\n", ntoh16(packet->operation));
   }
 
-  // Now, store the ip-mac address mapping relation
+  // Now, store the ip-mac mapping
   memcpy(&arp_table[arp_table_current_entry].ip_addr, dst_protocol_addr, 4);
   memcpy(&arp_table[arp_table_current_entry].mac_addr, dst_hardware_addr, 6);
 
