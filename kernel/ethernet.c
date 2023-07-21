@@ -18,6 +18,15 @@ uint16 ntoh16(uint16 n_val) {
     return hton16(n_val);
 }
 
+// uint32 hton32(uint32 h_val) {
+//     return ((h_val & 0x000000FF) << 24) | ((h_val & 0x0000FF00) << 8) |
+//            ((h_val & 0x00FF0000) >> 8) | ((h_val & 0xFF000000) >> 24);
+// }
+
+// uint32 ntoh32(uint32 n_val) {
+//     return hton32(n_val);
+// }
+
 
 void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 length) {
     printk(" ethernet_send: call type %d, length %d\n", type, length);
