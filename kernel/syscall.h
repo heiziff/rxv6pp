@@ -36,6 +36,7 @@ extern "C" {
 #define SYS_munmap 23
 #define SYS_futex 24
 #define SYS_arp 25
+#define SYS_ip 26
 #define SYS_hello_kernel 50
 #define SYS_printPT 51
 #define SYS_cxx 100

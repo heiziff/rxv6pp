@@ -2,8 +2,10 @@
 #include "ethernet.h"
 #include "defs.h"
 #include "arp.h"
+#include "udp.h"
 
-uint8 own_ip[4] = {10, 0, 2, 42};
+// TODO: change to bogus and set when we get one with DHCP
+uint8 own_ip[4] = {10, 0, 2, 15};
 
 uint16 ip_checksum(ip_datagram* header) {
     void** kit = (void**) &header;
@@ -26,11 +28,12 @@ uint8* get_ip(){
 }
 
 void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
+  printk(" IP_SEND: call\n");
     ip_datagram *packet = kalloc();
     memset(packet, 0, IP_HEADER_SIZE_32 * 4);
 
     // TODO: does this have to be flipped?
-    packet->version_headerlength = (IP_HEADER_SIZE_32 << 4) | 4;
+    packet->version_headerlength = hton8((IP_HEADER_SIZE_32 << 4) | 4, 4);
 
     packet->length = hton16(IP_HEADER_SIZE_32 * 4 + length);
 
@@ -54,10 +57,15 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
 
     //Check, if mac address is known:
     uint8 *mac_addr = arp_lookup(dst_ip);
+    if (!mac_addr) 
+      printk(" IP_SEND: arp lookup not found\n");
+    else
+      printk(" IP_SEND: arp lookup found\n");
+
     if (!mac_addr) {
         // if mac is unknown, get ready to ARP:
         // TODO: maybe try more than once?
-        arp_send_packet(bcast_haddr, dst_ip);
+        arp_send_packet(bcast_haddr, dst_ip, ARP_OP_REQUEST);
 
         // sleep until response
         sleep_for_arp_response(dst_ip);
@@ -77,6 +85,13 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
     kfree(packet);
 }
 
+uint64 sys_ip(void) {
+  uint8 ip[4] = {10, 0, 2, 2};
+  uint8 data[5] = {42, 34, 35, 69, 111};
+  ip_send_packet(ip, data, IP_PROTOCOL_UDP, 5);
+  return 0;
+}
+
 void ip_recv_packet(ip_datagram *packet) {
     *((uint8*)(&packet->version_headerlength)) = ntoh8(*((uint8*)(&packet->version_headerlength)), 4);
 
@@ -84,12 +99,13 @@ void ip_recv_packet(ip_datagram *packet) {
     if (packet->version_headerlength & (4)) {
 
         //uint8 * data = ((uint8*) packet) + IP_HEADER_SIZE_32 * 4;
-
+        printk(" IP got protocol %d\n", packet->protocol);
         switch(packet->protocol) {
             case IP_PROTOCOL_ICMP:
                 printk(" ICMP TODO\n");
                 break;
             case IP_PROTOCOL_UDP:
+                udp_recv_packet();
                 break;
             default:
                 printk(" unknown ip protocol\n");

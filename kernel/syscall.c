@@ -83,6 +83,7 @@ extern uint64 sys_printPT(void);
 extern uint64 sys_munmap(void);
 extern uint64 sys_futex(void);
 extern uint64 sys_arp(void);
+extern uint64 sys_ip(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -116,6 +117,7 @@ static uint64 (*syscalls[])(void) = {
   [SYS_printPT] sys_printPT,
   [SYS_futex] sys_futex,
   [SYS_arp] sys_arp,
+  [SYS_ip] sys_ip,
 
 };
 

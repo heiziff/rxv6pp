@@ -25,5 +25,8 @@ typedef struct __attribute__((__packed__)) ip_datagram_s {
 } ip_datagram;
 
 void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length);
+void ip_recv_packet(ip_datagram *);
+
+extern uint8 own_ip[4];
 
 #endif

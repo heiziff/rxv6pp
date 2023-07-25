@@ -47,6 +47,7 @@ int hello_kernel(int);
 int printPT(void);
 uint64 futex(void *, int, int);
 void arp(void*);
+void ip(void);
 
 // ulib.c
 int stat(const char *, struct stat *);

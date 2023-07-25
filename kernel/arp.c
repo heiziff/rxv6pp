@@ -4,9 +4,6 @@
 #include "ip.h"
 #include "defs.h"
 
-
-uint8 ip[4] = {10, 0, 2, 42};
-
 uint8 bcast_haddr[6] = {[0 ... 5] = 0xFF};
 
 typedef struct arp_table_entry_s {
@@ -25,14 +22,14 @@ void arp_init() {
 
 uint8 *arp_lookup(uint8* ip_address) {
   for (int i = 0; i < 512; i++) {
-    if (memcmp(ip_address, arp_table[i].ip_addr, 4)) {
+    if (memcmp(ip_address, arp_table[i].ip_addr, 4) == 0) {
       return arp_table[i].mac_addr;
     }
   }
   return 0;
 }
 
-void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {
+void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr, uint16 operation) {
   printk(" arp_send: call\n");
   arp_packet *packet = (arp_packet *)kalloc();
   memset(packet, 0, 4096);
@@ -44,13 +41,13 @@ void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {
   packet->paddr_len = IPV4_ADDR_SIZE;
 
   // TODO: dont hardcode only arp requests
-  packet->operation = hton16(ARP_OP_REQUEST);
+  packet->operation = hton16(operation);
 
   // Set src mac:
   rtl8139_get_mac(packet->sender_haddr);
 
   // Hardcode IP address (I hope this works)
-  memcpy(packet->sender_paddr, ip, 4);
+  memcpy(packet->sender_paddr, own_ip, 4);
 
   // Fill in target mac
   memcpy(packet->target_haddr, target_haddr, MAC_SIZE);
@@ -71,10 +68,10 @@ void arp_receive_packet(arp_packet* packet, int len) {
   memcpy(dst_protocol_addr, packet->sender_paddr, 4);
   // Reply arp request, if the ip address matches(have to hard code the IP eveywhere, because I don't have dhcp yet)
   if (ntoh16(packet->operation) == ARP_OP_REQUEST) {
-    if (memcmp(packet->target_paddr, ip, 4)) {
+    if (memcmp(packet->target_paddr, own_ip, 4) == 0) {
       printk(" ARP_RECEIVE: got request for our ip, answering with our mac\n");
 
-      arp_send_packet((uint8*)dst_hardware_addr, (uint8*)dst_protocol_addr);
+      arp_send_packet((uint8*)dst_hardware_addr, (uint8*)dst_protocol_addr, ARP_OP_REPLY);
 
       printk(" ARP_RECEIVE: paket sent\n");
     }
@@ -115,7 +112,7 @@ uint64 sys_arp(void) {
 
     copyin(myproc()->pagetable, (char*)target_paddr, paddr, IPV4_ADDR_SIZE);
 
-    arp_send_packet(bcast_haddr, target_paddr);
+    arp_send_packet(bcast_haddr, target_paddr, ARP_OP_REQUEST);
 
     return 0;
 }

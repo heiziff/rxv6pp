@@ -2,6 +2,7 @@
 #include "rtl8139.h"
 #include "defs.h"
 #include "arp.h"
+#include "ip.h"
 
 
 // Flip byte ordering to network byte order 16 bit (htons)
@@ -39,7 +40,7 @@ uint8 ntoh8(uint8 byte, int num_bits) {
 
 
 void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 length) {
-    printk(" ethernet_send: call type %d, length %d\n", type, length);
+    printk(" ethernet_send: call type 0x%x, length %d\n", type, length);
 
     // TODO: Ethernet frames are always page size, which is kinda wasteful
     ethernet_frame *frame = (ethernet_frame*) kalloc();
@@ -62,14 +63,16 @@ void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 lengt
 
 void ethernet_recv_packet(ethernet_frame *frame, uint32 length) {
     uint16 type = ntoh16(frame->type);
-    printk(" Ethernet_recv: call\n");
+    printk(" ETHERNET_RECV: call\n");
 
     switch(type){
         case ETH_TYPE_ARP:
-            printk(" ethernet_recv: call arp\n");
+            printk(" ETHERNET_RECV: call arp\n");
             arp_receive_packet((void*)frame + sizeof(ethernet_frame), length);
             break;
         case ETH_TYPE_IP:
+            printk(" ETHERNET_RECV: ip\n");
+            ip_recv_packet((void*)frame + sizeof(ethernet_frame));
             break;
         default:
             panic("ethernet: unknown packet type");

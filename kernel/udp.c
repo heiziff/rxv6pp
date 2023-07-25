@@ -23,7 +23,7 @@ void udp_send_packet(uint8 *dst_ip, uint16 src_port, uint16 dst_port, uint8 *dat
     kfree(packet);
 }
 
-void udp_handle_packet(udp_packet *packet) {
+void udp_recv_packet(udp_packet *packet) {
     uint16 dst_port = ntoh16(packet->dst_port);
 
     //uint8 *data = ((uint8*) packet) + sizeof(udp_packet);
@@ -34,4 +34,7 @@ void udp_handle_packet(udp_packet *packet) {
     else {
         printk(" Got UDP packet on (unhandled) Port %d\n", dst_port);
     }
+
+    printk(" Packet data:\n");
+    printk(" %s\n", packet + sizeof(udp_packet));
 }
