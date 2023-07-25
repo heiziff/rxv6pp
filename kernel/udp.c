@@ -35,6 +35,6 @@ void udp_recv_packet(udp_packet *packet) {
         printk(" Got UDP packet on (unhandled) Port %d\n", dst_port);
     }
 
-    printk(" Packet data:\n");
-    printk(" %s\n", packet + sizeof(udp_packet));
+    printk(" Packet data (udp length %d):\n", packet->length);
+    printk(" %s\n", (char*)((void*)packet + sizeof(udp_packet)));
 }
