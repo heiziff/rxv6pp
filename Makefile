@@ -39,6 +39,7 @@ OBJS = \
   $K/arp.o \
   $K/ip.o \
   $K/udp.o \
+  $K/dhcp.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
