@@ -52,7 +52,9 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
         // if mac is unknown, get ready to ARP:
         // TODO: maybe try more than once?
         arp_send_packet(bcast_haddr, dst_ip);
-        // TODO: sleep until response
+
+        // sleep until response
+        sleep_for_arp_response(dst_ip);
 
         // After wakeup: lookup and send:
         mac_addr = arp_lookup(dst_ip);

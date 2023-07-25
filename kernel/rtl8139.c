@@ -1,6 +1,7 @@
 #include "defs.h"
 #include "rtl8139.h"
 #include "ethernet.h"
+#include "arp.h"
 
 uint8 mac_addr[6];
 
@@ -88,6 +89,9 @@ bool_t rtl8139__init()
   //int res = mappages(myproc()->pagetable, RTL_MEM_ADDR, 0x100, RTL_MMIO_BASE, PTE_R | PTE_W);
   //printk(" rtl_init: mapped");
   //if (res) panic("rtl_init: failed mapping");
+
+  // Init arp table stuff
+  arp_init();
 
   // Turn on rtl8139
   rtl_byte_w(Config1, 0x0);

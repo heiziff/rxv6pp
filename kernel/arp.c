@@ -17,6 +17,12 @@ typedef struct arp_table_entry_s {
 arp_table_entry arp_table[512];
 uint16 arp_table_current_entry = 0;
 
+struct spinlock arp_table_lock;
+
+void arp_init() {
+  initlock(&arp_table_lock, "arp_table_lock");
+}
+
 uint8 *arp_lookup(uint8* ip_address) {
   for (int i = 0; i < 512; i++) {
     if (memcmp(ip_address, arp_table[i].ip_addr, 4)) {
@@ -90,6 +96,12 @@ void arp_receive_packet(arp_packet* packet, int len) {
   // Wrap around
   if(arp_table_current_entry >= 512)
       arp_table_current_entry = 0;
+
+  // we got a new ip-mac mapping, notify all processes sleeping for a arp response
+  acquire(&arp_table_lock);
+  printk(" ARP_RECEIVE: got response, gonna wakeup processes waiting for response\n");
+  wakeup(&arp_table);
+  release(&arp_table_lock);
 }
 
 
@@ -106,5 +118,17 @@ uint64 sys_arp(void) {
     arp_send_packet(bcast_haddr, target_paddr);
 
     return 0;
+}
 
+void sleep_for_arp_response(uint8* ip) {
+  printk(" ARP_SLEEP_FOR_RESPONSE: will sleep for response\n");
+  acquire(&arp_table_lock);
+
+  while (!arp_lookup(ip)) {
+    printk(" ARP_SLEEP_FOR_RESPONSE: gonna sleep\n");
+    sleep((void*) arp_table, &arp_table_lock);
+  }
+  
+  release(&arp_table_lock);
+  printk(" ARP_SLEEP_FOR_RESPONSE: got a arp response\n");
 }
