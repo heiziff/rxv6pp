@@ -105,7 +105,7 @@ void ip_recv_packet(ip_datagram *packet) {
                 printk(" ICMP TODO\n");
                 break;
             case IP_PROTOCOL_UDP:
-                udp_recv_packet();
+                udp_recv_packet((void*)packet + sizeof(ip_datagram));
                 break;
             default:
                 printk(" unknown ip protocol\n");
