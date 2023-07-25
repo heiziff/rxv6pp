@@ -7,6 +7,8 @@
 
 uint8 ip[4] = {10, 0, 2, 42};
 
+uint8 bcast_haddr[6] = {[0 ... 5] = 0xFF};
+
 typedef struct arp_table_entry_s {
   uint8 ip_addr[4];
   uint8 mac_addr[6];
@@ -21,6 +23,7 @@ uint8 *arp_lookup(uint8* ip_address) {
       return arp_table[i].mac_addr;
     }
   }
+  return 0;
 }
 
 void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr) {

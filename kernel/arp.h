@@ -24,7 +24,7 @@ typedef struct __attribute__((__packed__)) arp_packet_s {
 
 } arp_packet;
 
-uint8 bcast_haddr[6] = {[0 ... 5] = 0xFF};
+extern uint8 bcast_haddr[6];
 
 void arp_send_packet(uint8 *, uint8 *);
 void arp_receive_packet(arp_packet *, int);
