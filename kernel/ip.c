@@ -6,14 +6,19 @@
 uint8 own_ip[4] = {10, 0, 2, 42};
 
 uint16 ip_checksum(ip_datagram* header) {
-    uint16 * it = (uint16*) header;
+    void** kit = (void**) &header;
 
-    int sum = 0;
-    for(int i = 0; i < IP_HEADER_SIZE * 2; i++) {
-        sum += ((1 << 16) - 1) - it[i];
+    uint16 *it = *kit;
+
+    uint32 sum = 0;
+    for(int i = 0; i < IP_HEADER_SIZE_32 * 2; i++) {
+        sum += hton16(it[i]);
     }
+    int carry = sum >> 16;
+    sum = sum & 0x0FFFF;
+    sum += carry;
 
-    return ((1 << 16) - 1) - sum;
+    return (~sum);
 }
 
 uint8* get_ip(){
@@ -22,14 +27,15 @@ uint8* get_ip(){
 
 void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
     ip_datagram *packet = kalloc();
-    memset(packet, 0, IP_HEADER_SIZE);
+    memset(packet, 0, IP_HEADER_SIZE_32 * 4);
 
-    packet->version_headerlength = (IP_HEADER_SIZE << 4) | 4;
+    // TODO: does this have to be flipped?
+    packet->version_headerlength = (IP_HEADER_SIZE_32 << 4) | 4;
 
-    packet->length = hton16(IP_HEADER_SIZE + length);
+    packet->length = hton16(IP_HEADER_SIZE_32 * 4 + length);
 
     // identification only on fragment
-    packet->ttl = 0xFF;
+    packet->ttl = 32;
 
     packet->protocol = protocol;
 
@@ -40,10 +46,10 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
 
 
     // Lastly, compute checksum
-    packet->checksum = ip_checksum(packet);
+    packet->header_checksum = hton16(ip_checksum(packet));
 
     // now, copy data
-    uint8 *datagram_data = ((uint8*) packet) + sizeof(ip_datagram);
+    uint8 *datagram_data = ((uint8*) packet) + IP_HEADER_SIZE_32 * 4;
     memcpy(datagram_data, data, length);
 
     //Check, if mac address is known:
@@ -66,7 +72,30 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
     }
 
     // MAC is known, send ethernet packet
-    ethernet_send_packet(mac_addr, packet, ETH_TYPE_IP, length + sizeof(ip_datagram));
+    ethernet_send_packet(mac_addr, (uint8*) packet, ETH_TYPE_IP, length + sizeof(ip_datagram));
 
     kfree(packet);
+}
+
+void ip_recv_packet(ip_datagram *packet) {
+    *((uint8*)(&packet->version_headerlength)) = ntoh8(*((uint8*)(&packet->version_headerlength)), 4);
+
+    // Check for IPV4
+    if (packet->version_headerlength & (4)) {
+
+        //uint8 * data = ((uint8*) packet) + IP_HEADER_SIZE_32 * 4;
+
+        switch(packet->protocol) {
+            case IP_PROTOCOL_ICMP:
+                printk(" ICMP TODO\n");
+                break;
+            case IP_PROTOCOL_UDP:
+                break;
+            default:
+                printk(" unknown ip protocol\n");
+        }
+
+    } else {
+        printk(" What the f is an IPv6?");
+    }
 }

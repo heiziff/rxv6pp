@@ -16,6 +16,9 @@ typedef struct __attribute__((__packed__)) ethernet_frame_s {
     // Data comes here
 } ethernet_frame;
 
+uint8 hton8(uint8 byte, int num_bits);
+uint8 ntoh8(uint8 byte, int num_bits);
+
 uint16 hton16(uint16 h_val);
 uint16 ntoh16(uint16 n_val);
 

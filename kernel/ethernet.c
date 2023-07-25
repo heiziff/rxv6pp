@@ -18,6 +18,16 @@ uint16 ntoh16(uint16 n_val) {
     return hton16(n_val);
 }
 
+uint8 hton8(uint8 byte, int num_bits) {
+    uint8 res = 0;
+    res = byte << (8 - num_bits);
+    return res | (byte >> num_bits);
+}
+
+uint8 ntoh8(uint8 byte, int num_bits) {
+    return hton8(byte, num_bits);
+}
+
 // uint32 hton32(uint32 h_val) {
 //     return ((h_val & 0x000000FF) << 24) | ((h_val & 0x0000FF00) << 8) |
 //            ((h_val & 0x00FF0000) >> 8) | ((h_val & 0xFF000000) >> 24);
