@@ -32,4 +32,6 @@ void arp_receive_packet(arp_packet *, int);
 
 uint8 *arp_lookup(uint8* ip_address);
 
+void sleep_for_arp_response(uint8* ip);
+
 #endif
