@@ -5,7 +5,9 @@
 #include "udp.h"
 
 // TODO: change to bogus and set when we get one with DHCP
-uint8 own_ip[4] = {10, 0, 2, 15};
+uint8 own_ip[4] = {0, 0, 0, 0};
+
+uint8 bcast_ip[4] = {0xFF, 0xFF, 0xFF, 0xFF};
 
 uint16 ip_checksum(ip_datagram* header) {
     void** kit = (void**) &header;
@@ -55,8 +57,16 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
     uint8 *datagram_data = ((uint8*) packet) + IP_HEADER_SIZE_32 * 4;
     memcpy(datagram_data, data, length);
 
-    //Check, if mac address is known:
-    uint8 *mac_addr = arp_lookup(dst_ip);
+    //Check, if ip address is broadcast or known in arp table:
+    uint8 *mac_addr;
+    if (memcmp(dst_ip, bcast_ip, IPV4_ADDR_SIZE) == 0) {
+        mac_addr = bcast_haddr;
+        printk(" IP_SEND: Sending broadcast\n");
+    } else {
+        mac_addr = arp_lookup(dst_ip);
+    }
+
+
     if (!mac_addr) 
       printk(" IP_SEND: arp lookup not found\n");
     else
