@@ -3,9 +3,15 @@
 
 #include "types.h"
 
+#define DHCP_CLIENT 1
+#define DHCP_SERVER 2
+
+#define DHCP_MAGIC 0x63825363
+
 #define DHCP_DISCOVER 1
 #define DHCP_OFFER 2
 #define DHCP_REQUEST 3
+#define DHCP_ACK 5
 
 #define XID 0xFF4242FF
 
@@ -45,5 +51,10 @@ typedef struct __attribute__((__packed__)) dhcp_packet_s {
     uint8 options[64];
 
 } dhcp_packet;
+
+
+void dhcp_send_discover();
+
+void dhcp_recv_packet(dhcp_packet *packet);
 
 #endif
