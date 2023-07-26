@@ -1,7 +1,8 @@
 #include "defs.h"
 #include "rtl8139.h"
-#include "ethernet.h"
+#include "dhcp.h"
 #include "arp.h"
+#include "ethernet.h"
 
 uint8 mac_addr[6];
 
@@ -140,6 +141,8 @@ bool_t rtl8139__init()
   mac_addr[5] = mac_part2 >> 8;
 
   printk(" Finish initing rtl, we have: mac=%p, imr=%p\n", *((uint64*) mac_addr), rtl_word_r(IntrMask));
+
+  dhcp_send_discover();
 
   return 0;
 }

@@ -1,4 +1,5 @@
 #include "udp.h"
+#include "dhcp.h"
 #include "ip.h"
 #include "ethernet.h"
 #include "defs.h"
@@ -29,7 +30,7 @@ void udp_recv_packet(udp_packet *packet) {
     //uint8 *data = ((uint8*) packet) + sizeof(udp_packet);
 
     if (ntoh16(packet->dst_port) == DHCP_PORT_CLIENT) {
-        //dhcp_recv_packet(data);
+        dhcp_recv_packet(((void*) packet) + sizeof(udp_packet));
     }
     else {
         printk(" Got UDP packet on (unhandled) Port %d\n", dst_port);
