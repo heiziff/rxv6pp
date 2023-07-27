@@ -14,6 +14,32 @@ extern char etext[]; // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+void pci_init() {
+
+  // Check for Hardware in PCI config space and set base adresses
+  for(uint64 i = 0; i < 256; i++) {
+    uint16* val = ((uint16*) (PCI_CONFIG_SPACE + 256 * i));
+    // Check for rtl8139 pci config space
+    if(*val == 0x10ec) {
+      RTL81319_pci_config_space = (void*) val;
+    }
+  }
+
+  // Set mmio register adress
+  *((uint32*)(RTL81319_pci_config_space + BAR1)) |= 0x40000000;
+  // Enable memory space bar and enable pci bus mastering
+  *((uint16*)(RTL81319_pci_config_space + Command)) |= 0b0110;
+  // Disable the "Interrupt disable" bit
+  *((uint16*)(RTL81319_pci_config_space + Command)) &= (~(1 << 10));
+  *((uint16*)(RTL81319_pci_config_space + Command)) &= 0xFBFFF;
+
+
+  // Set to use interrupt pin 1 and interrupt line 33
+  *((uint32*)(RTL81319_pci_config_space + IntrStuff)) |= ((1 << 8) | (RTL8139_IRQ));
+
+  rtl8139__init();
+}
+
 // Make a direct-map page table for the kernel.
 pagetable_t kvmmake(void) {
   pagetable_t kpgtbl;
@@ -30,50 +56,9 @@ pagetable_t kvmmake(void) {
   // pci rtl8139 mapping
   kvmmap(kpgtbl, RTL8139IO, RTL8139IO, PGSIZE, PTE_R | PTE_W);
   kvmmap(kpgtbl, PCI_CONFIG_SPACE, PCI_CONFIG_SPACE, PAGE_SIZE, PTE_R | PTE_W);
-  // printk(" hello i have the %p\n", *((uint16*) (PCI_CONFIG_SPACE)));
-  // printk(" and the %p\n", *((uint16*) (PCI_CONFIG_SPACE + 2)));
-  printk(" Good morning, checking in on all pci config spaces\n");
-  for(uint64 i = 0; i < 256; i++) {
-    uint16* val = ((uint16*) (PCI_CONFIG_SPACE + 256 * i));
-    if(*val == 0x10ec) {
-      RTL81319_pci_config_space = (void*) val;
-      printk(" Got config space at %p\n", val);
-    }
-  }
 
-  // Set mmio register adress
-  *((uint32*)(RTL81319_pci_config_space + BAR1)) |= 0x40000000;
-  // Enable memory space bar and enable pci bus mastering
-  *((uint16*)(RTL81319_pci_config_space + Command)) |= 0b0110;
-  // Disable the "Interrupt disable" bit
-  *((uint16*)(RTL81319_pci_config_space + Command)) &= (~(1 << 10));
-  *((uint16*)(RTL81319_pci_config_space + Command)) &= 0xFBFFF;
+  pci_init();
 
-  // MSI capabilites stuff
-  printk(" status: %p\n", *((uint16*) (RTL81319_pci_config_space + Status)));
-
-
-  // Set to use interrupt pin 1 and interrupt line 3
-  printk(" intrstuff: %p\n", *((uint16*) (RTL81319_pci_config_space + IntrStuff)));
-  *((uint32*)(RTL81319_pci_config_space + IntrStuff)) |= ((1 << 8) | (RTL8139_IRQ));
-  uint32 inter = *((uint32*)(RTL81319_pci_config_space + IntrStuff));
-  printk(" pci_setup: Got interrupt stuff %p\n", inter);
-
-
-
-  // uint16 status = *((uint16*)(RTL81319_pci_config_space + Status));
-  // uint8 header = *((uint8*)(RTL81319_pci_config_space + HeaderType));
-  // uint16 command = *((uint16*)(RTL81319_pci_config_space + Command));
-  // uint16 class_code = *((uint16*)(RTL81319_pci_config_space + ClassCode));
-  // uint16 bar0 = *((uint16*)(RTL81319_pci_config_space + BAR0));
-  // uint16 bar1 = *((uint16*)(RTL81319_pci_config_space + BAR1));
-  // uint16 bar2 = *((uint16*)(RTL81319_pci_config_space + BAR2));
-  // uint16 bar3 = *((uint16*)(RTL81319_pci_config_space + BAR3));
-  // uint16 bar4 = *((uint16*)(RTL81319_pci_config_space + BAR4));
-  // uint16 bar5 = *((uint16*)(RTL81319_pci_config_space + BAR5));
-  // printk(" Finish setup, got status=%p, header=%p, command=%p, class code=%p, bar0=%p, bar1=%p, bar2= %p, bar3=%p, bar4=%p, bar5=%p\n", status, header, command, class_code, bar0, bar1, bar2, bar3, bar4, bar5);
-
-  rtl8139__init();
 
   // PLIC
   kvmmap(kpgtbl, PLIC, PLIC, 0x400000, PTE_R | PTE_W);

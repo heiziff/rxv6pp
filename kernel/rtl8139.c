@@ -87,9 +87,6 @@ uint32 rtl8139_intr() {
 
 bool_t rtl8139__init()
 {
-  //int res = mappages(myproc()->pagetable, RTL_MEM_ADDR, 0x100, RTL_MMIO_BASE, PTE_R | PTE_W);
-  //printk(" rtl_init: mapped");
-  //if (res) panic("rtl_init: failed mapping");
 
   // Init arp table stuff
   arp_init();
@@ -103,18 +100,13 @@ bool_t rtl8139__init()
   // Spin waiting for device reset (or not :D )
   //while(rtl_byte_r(ChipCmd) & 0x10);
 
-  // uint32 tst = 0x10000000;
-  // uint32 tst2 = 0x80000000;
-  // printk(" %p, %p\n", tst, tst2);
-  printk(" rtl_init: rx buffer at %p -> %p\n", rx_buffer, ptr64to32(rx_buffer));
 
   // init receive buffer
   rtl_dword_w(RxBuf, ptr64to32(rx_buffer));
 
   // Set interrupt mask register
-  // TODO: Change back
-  //rtl_word_w(IntrMask, INT_ROK | INT_TOK);
-  rtl_word_w(IntrMask, 0xFFFF);
+  rtl_word_w(IntrMask, INT_ROK | INT_TOK);
+  //rtl_word_w(IntrMask, 0xFFFF);
 
   // Configure receive buffer (1 is wrap bit, f for enabled packets (we allow all because we want friends to talk to :) ))
   rtl_dword_w(RxConfig, 0xf | (1 << 7)); // (1 << 7) is the WRAP bit, 0xf is AB+AM+APM+AAP
