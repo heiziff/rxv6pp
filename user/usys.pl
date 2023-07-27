@@ -43,5 +43,5 @@ entry("munmap");
 entry("printPT");
 entry("futex");
 entry("arp");
-entry("ip");
+entry("net");
 
