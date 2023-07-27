@@ -370,17 +370,13 @@ void reparent(struct proc *p) {
 // until its parent calls wait().
 void exit(int status) {
 
-  printk(" PRO LOCK MEM:\n");
   for (int i = 0; i < 5; i++) {
     struct proc *p = &proc[i];
     acquire(&p->lock);
     int pid = p->pid;
-    uint64 lockaddr = (uint64) &p->lock;
     release(&p->lock);
     if (pid == 0) continue;
-    printk("   %d: %p\n", pid, lockaddr);
   }
-  printk(" \n");
 
   struct proc *p = myproc();
 
@@ -400,7 +396,7 @@ void exit(int status) {
   end_op();
   p->cwd = 0;
 
-  printk(" EXIT: pid %d\n", p->pid);
+  //printk(" EXIT: pid %d\n", p->pid);
 
   acquire(&wait_lock);
 
@@ -408,17 +404,17 @@ void exit(int status) {
   reparent(p);
 
   // Parent might be sleeping in wait().
-  printk(" EXIT: wakeup pid %d\n", p->parent->pid);
+  //printk(" EXIT: wakeup pid %d\n", p->parent->pid);
   wakeup(p->parent);
 
-  printk(" EXIT: acquire p %d lock\n", p->pid);
+  //printk(" EXIT: acquire p %d lock\n", p->pid);
   acquire(&p->lock);
-  printk(" EXIT: acquired p lock %p\n", &p->lock);
+  //printk(" EXIT: acquired p lock %p\n", &p->lock);
 
   p->xstate = status;
   p->state  = ZOMBIE;
 
-  printk(" EXIT: parent locked: %d\n", p->parent->lock.locked);
+  //printk(" EXIT: parent locked: %d\n", p->parent->lock.locked);
 
   release(&wait_lock);
 
@@ -442,9 +438,7 @@ int wait(uint64 addr) {
     for (pp = proc; pp < &proc[NPROC]; pp++) {
       if (pp->parent == p) {
         // make sure the child isn't still in exit() or swtch().
-        printk(" WAIT: before acquire for lock of pid %d\n", pp->pid);
         acquire(&pp->lock);
-        printk(" WAIT: after acquire\n");
 
         havekids = 1;
         if (pp->state == ZOMBIE) {
