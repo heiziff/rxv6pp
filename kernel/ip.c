@@ -30,7 +30,6 @@ uint8* get_ip(){
 }
 
 void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
-  printk(" IP_SEND: call\n");
     ip_datagram *packet = kalloc();
     memset(packet, 0, IP_HEADER_SIZE_32 * 4);
 
@@ -44,7 +43,6 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
 
     packet->protocol = protocol;
 
-    // TODO: reverse bytes?
     memcpy(packet->src_address, get_ip(), IPV4_ADDR_SIZE);
 
     memcpy(packet->dst_address, dst_ip, IPV4_ADDR_SIZE);
@@ -61,16 +59,15 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
     uint8 *mac_addr;
     if (memcmp(dst_ip, bcast_ip, IPV4_ADDR_SIZE) == 0) {
         mac_addr = bcast_haddr;
-        printk(" IP_SEND: Sending broadcast\n");
     } else {
         mac_addr = arp_lookup(dst_ip);
     }
 
 
     if (!mac_addr) 
-      printk(" IP_SEND: arp lookup not found\n");
+      dbg(" IP_SEND: arp lookup not found\n");
     else
-      printk(" IP_SEND: arp lookup found\n");
+      dbg(" IP_SEND: arp lookup found\n");
 
     if (!mac_addr) {
         // if mac is unknown, get ready to ARP:
@@ -95,10 +92,10 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
     kfree(packet);
 }
 
-uint64 sys_ip(void) {
+uint64 sys_net(void) {
   uint8 ip[4] = {10, 0, 2, 2};
   uint8 data[5] = {42, 34, 35, 69, 111};
-  ip_send_packet(ip, data, IP_PROTOCOL_UDP, 5);
+  udp_send_packet(ip, 1337, 1234, data, 5);
   return 0;
 }
 
@@ -108,8 +105,7 @@ void ip_recv_packet(ip_datagram *packet) {
     // Check for IPV4
     if (packet->version_headerlength & (4)) {
 
-        //uint8 * data = ((uint8*) packet) + IP_HEADER_SIZE_32 * 4;
-        printk(" IP got protocol %d\n", packet->protocol);
+        dbg(" IP got protocol %d\n", packet->protocol);
         switch(packet->protocol) {
             case IP_PROTOCOL_ICMP:
                 printk(" ICMP TODO\n");
@@ -118,10 +114,10 @@ void ip_recv_packet(ip_datagram *packet) {
                 udp_recv_packet((void*)packet + sizeof(ip_datagram));
                 break;
             default:
-                printk(" unknown ip protocol\n");
+                dbg(" unknown ip protocol\n");
         }
 
     } else {
-        printk(" What the f is an IPv6?");
+        dbg(" What the f is an IPv6?");
     }
 }

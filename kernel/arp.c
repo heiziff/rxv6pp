@@ -30,7 +30,7 @@ uint8 *arp_lookup(uint8* ip_address) {
 }
 
 void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr, uint16 operation) {
-  printk(" arp_send: call\n");
+  dbg(" arp_send: call\n");
   arp_packet *packet = (arp_packet *)kalloc();
   memset(packet, 0, 4096);
 
@@ -47,7 +47,7 @@ void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr, uint16 operation)
   rtl8139_get_mac(packet->sender_haddr);
 
   // Hardcode IP address (I hope this works)
-  memcpy(packet->sender_paddr, own_ip, 4);
+  memcpy(packet->sender_paddr, get_ip(), 4);
 
   // Fill in target mac
   memcpy(packet->target_haddr, target_haddr, MAC_SIZE);
@@ -60,7 +60,7 @@ void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr, uint16 operation)
 }
 
 void arp_receive_packet(arp_packet* packet, int len) {
-  printk(" ARP_RECEIVE: call: src ip %d.%d.%d.%d\n", packet->sender_paddr[0], packet->sender_paddr[1], packet->sender_paddr[2], packet->sender_paddr[3]);
+  dbg(" ARP_RECEIVE: call: src ip %d.%d.%d.%d\n", packet->sender_paddr[0], packet->sender_paddr[1], packet->sender_paddr[2], packet->sender_paddr[3]);
   char dst_hardware_addr[6];
   char dst_protocol_addr[4];
   // Save some packet field
@@ -69,19 +69,19 @@ void arp_receive_packet(arp_packet* packet, int len) {
   // Reply arp request, if the ip address matches(have to hard code the IP eveywhere, because I don't have dhcp yet)
   if (ntoh16(packet->operation) == ARP_OP_REQUEST) {
     if (memcmp(packet->target_paddr, own_ip, 4) == 0) {
-      printk(" ARP_RECEIVE: got request for our ip, answering with our mac\n");
+      dbg(" ARP_RECEIVE: got request for our ip, answering with our mac\n");
 
       arp_send_packet((uint8*)dst_hardware_addr, (uint8*)dst_protocol_addr, ARP_OP_REPLY);
 
-      printk(" ARP_RECEIVE: paket sent\n");
+      dbg(" ARP_RECEIVE: paket sent\n");
     }
   }
   else if(ntoh16(packet->operation) == ARP_OP_REPLY){
       //TODO: implement
-      printk(" ARP_RECEIVE: received arp reply\n");
+      dbg(" ARP_RECEIVE: received arp reply\n");
   }
   else {
-      printk(" Got unknown ARP, opcode = %d\n", ntoh16(packet->operation));
+      dbg(" Got unknown ARP, opcode = %d\n", ntoh16(packet->operation));
   }
 
   // Now, store the ip-mac mapping
@@ -96,7 +96,7 @@ void arp_receive_packet(arp_packet* packet, int len) {
 
   // we got a new ip-mac mapping, notify all processes sleeping for a arp response
   acquire(&arp_table_lock);
-  printk(" ARP_RECEIVE: got response, gonna wakeup processes waiting for response\n");
+  dbg(" ARP_RECEIVE: got response, gonna wakeup processes waiting for response\n");
   wakeup(&arp_table);
   release(&arp_table_lock);
 }
@@ -118,14 +118,14 @@ uint64 sys_arp(void) {
 }
 
 void sleep_for_arp_response(uint8* ip) {
-  printk(" ARP_SLEEP_FOR_RESPONSE: will sleep for response\n");
+  dbg(" ARP_SLEEP_FOR_RESPONSE: will sleep for response\n");
   acquire(&arp_table_lock);
 
   while (!arp_lookup(ip)) {
-    printk(" ARP_SLEEP_FOR_RESPONSE: gonna sleep\n");
+    dbg(" ARP_SLEEP_FOR_RESPONSE: gonna sleep\n");
     sleep((void*) arp_table, &arp_table_lock);
   }
   
   release(&arp_table_lock);
-  printk(" ARP_SLEEP_FOR_RESPONSE: got a arp response\n");
+  dbg(" ARP_SLEEP_FOR_RESPONSE: got a arp response\n");
 }

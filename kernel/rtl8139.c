@@ -47,7 +47,6 @@ static uint32 rtl8139_rx_handler() {
   // TODO: evtl noch um die anderen Interrupts kümmern (siehe seite 9 Programmer manual)
   // writing bit clears interrupt
   rtl_word_w(IntrStatus, INT_ROK);
-  printk(" rx_handler: call\n");
 
   rtl8139_recv_packet();
 
@@ -56,22 +55,14 @@ static uint32 rtl8139_rx_handler() {
 
 static uint32 rtl8139_tx_handler() {
   rtl_word_w(IntrStatus, INT_TOK);
-  printk(" tx_handler: call\n");
-
-  //uint8 desc = 0;
-  //uint32 status = rtl_dword_r(TxStatus0 + (desc *4) & (TSD_OWN | TSD_TOK));
-  // TODO: Check for finished descriptors and free them? Is this needed?????
-
   return 0;
 }
 
 uint32 rtl8139_intr() {
 	// Check the reason for this interrupt
-	printk(" GET INTERRUPTED!!!!!!!!!!!!\n");
 	uint16 isr = rtl_word_r(IntrStatus);
 	if (!(isr & INT_ROK) && !(isr & INT_TOK)) {
-    printk(" rtl8139: interrupt is %p\n", isr);
-		//panic("rtl8139: error interrupt");
+		panic("rtl8139: error interrupt");
 	}
 
 	if (isr & INT_ROK)
@@ -79,7 +70,7 @@ uint32 rtl8139_intr() {
 	else if (isr & INT_TOK)
 		return rtl8139_tx_handler();
 	else {
-		//panic("rtl8139: how?");
+		panic("rtl8139: how?");
 		return 1;
 	}
   return 0;
@@ -132,7 +123,7 @@ bool_t rtl8139__init()
   mac_addr[4] = mac_part2 >> 0;
   mac_addr[5] = mac_part2 >> 8;
 
-  printk(" Finish initing rtl, we have: mac=%p, imr=%p\n", *((uint64*) mac_addr), rtl_word_r(IntrMask));
+  dbg(" Finish initing rtl, we have: mac=%p, imr=%p\n", *((uint64*) mac_addr), rtl_word_r(IntrMask));
 
   dhcp_send_discover();
 
@@ -146,11 +137,11 @@ void rtl8139_get_mac(uint8 *buf) {
 
 
 void rtl8139_send_packet(void * data, uint32 len) {
-    // Copy data to physical contigious memory
-    // TODO: Check if len is larger than 1 page and think of something X)
-    // FIXME: Oh god, this has to be 32 bit adress x)
-    // TODO: Free this at some point? (maybe always use same transfer area? that might be bad with multiple requests)
+    // TODO: Check if len is larger than 1 page and somehow summon contingent memory
+    // TODO: Minor memory leak
     void * transfer_data = kalloc();
+
+    // Copy data to physical contigious memory
     memcpy(transfer_data, data, len);
 
     acquire(&tx_descriptor_lock);
@@ -164,7 +155,6 @@ void rtl8139_send_packet(void * data, uint32 len) {
     cur_tx_descriptor = (cur_tx_descriptor + 1) % 4;
 
     release(&tx_descriptor_lock);
-    printk(" rtl_send: Done\n");
 }
 
 void rtl8139_recv_packet() {

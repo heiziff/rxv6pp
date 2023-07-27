@@ -40,7 +40,7 @@ uint32 hton32(uint32 h_val) {
 
 
 void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 length) {
-    printk(" ethernet_send: call type 0x%x, length %d\n", type, length);
+    dbg(" ethernet_send: call type 0x%x, length %d\n", type, length);
 
     // TODO: Ethernet frames are always page size, which is kinda wasteful
     ethernet_frame *frame = (ethernet_frame*) kalloc();
@@ -63,15 +63,15 @@ void ethernet_send_packet(uint8 *dst_mac, uint8 *data, uint16 type, uint32 lengt
 
 void ethernet_recv_packet(ethernet_frame *frame, uint32 length) {
     uint16 type = ntoh16(frame->type);
-    printk(" ETHERNET_RECV: call\n");
+    dbg(" ETHERNET_RECV: call\n");
 
     switch(type){
         case ETH_TYPE_ARP:
-            printk(" ETHERNET_RECV: call arp\n");
+            dbg(" ETHERNET_RECV: call arp\n");
             arp_receive_packet((void*)frame + sizeof(ethernet_frame), length);
             break;
         case ETH_TYPE_IP:
-            printk(" ETHERNET_RECV: ip\n");
+            dbg(" ETHERNET_RECV: ip\n");
             ip_recv_packet((void*)frame + sizeof(ethernet_frame));
             break;
         default:
