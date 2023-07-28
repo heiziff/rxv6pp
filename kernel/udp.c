@@ -37,4 +37,5 @@ void udp_recv_packet(udp_packet *packet) {
     }
 
     dbg(" Got udp packet with length %d\n", packet->length);
+    printk(" %s\n", (void*)packet + sizeof(udp_packet));
 }
