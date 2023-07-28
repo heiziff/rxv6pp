@@ -22,11 +22,14 @@ void arp_init() {
 }
 
 uint8 *arp_lookup(uint8* ip_address) {
+  acquire(&arp_table_lock);
   for (int i = 0; i < 512; i++) {
     if (memcmp(ip_address, arp_table[i].ip_addr, 4) == 0) {
+      release(&arp_table_lock);
       return arp_table[i].mac_addr;
     }
   }
+  release(&arp_table_lock);
   return 0;
 }
 
@@ -91,6 +94,7 @@ void arp_receive_packet(arp_packet* packet, int len) {
   }
 
   // Now, store the ip-mac mapping
+  acquire(&arp_table_lock);
   memcpy(&arp_table[arp_table_current_entry].ip_addr, dst_protocol_addr, 4);
   memcpy(&arp_table[arp_table_current_entry].mac_addr, dst_hardware_addr, 6);
 
@@ -101,7 +105,6 @@ void arp_receive_packet(arp_packet* packet, int len) {
       arp_table_current_entry = 0;
 
   // we got a new ip-mac mapping, notify all processes sleeping for a arp response
-  acquire(&arp_table_lock);
   dbg(" ARP_RECEIVE: got response, gonna wakeup processes waiting for response\n");
   wakeup(&arp_table);
   release(&arp_table_lock);
