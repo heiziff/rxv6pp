@@ -1,7 +1,8 @@
 #include "arp.h"
-#include "rtl8139.h"
-#include "ethernet.h"
+#include "dhcp.h"
 #include "ip.h"
+#include "ethernet.h"
+#include "rtl8139.h"
 #include "defs.h"
 
 uint8 bcast_haddr[6] = {[0 ... 5] = 0xFF};
@@ -46,8 +47,11 @@ void arp_send_packet(uint8 *target_haddr, uint8 *target_paddr, uint16 operation)
   // Set src mac:
   rtl8139_get_mac(packet->sender_haddr);
 
+  uint8 sender_ip[IPV4_ADDR_SIZE];
+  get_ip(sender_ip);
+
   // Hardcode IP address (I hope this works)
-  memcpy(packet->sender_paddr, get_ip(), 4);
+  memcpy(packet->sender_paddr, sender_ip, 4);
 
   // Fill in target mac
   memcpy(packet->target_haddr, target_haddr, MAC_SIZE);
@@ -68,6 +72,8 @@ void arp_receive_packet(arp_packet* packet, int len) {
   memcpy(dst_protocol_addr, packet->sender_paddr, 4);
   // Reply arp request, if the ip address matches(have to hard code the IP eveywhere, because I don't have dhcp yet)
   if (ntoh16(packet->operation) == ARP_OP_REQUEST) {
+    uint8 own_ip[IPV4_ADDR_SIZE];
+    get_ip(own_ip);
     if (memcmp(packet->target_paddr, own_ip, 4) == 0) {
       dbg(" ARP_RECEIVE: got request for our ip, answering with our mac\n");
 

@@ -52,6 +52,9 @@ typedef struct __attribute__((__packed__)) dhcp_packet_s {
 
 } dhcp_packet;
 
+void get_ip(uint8* buf);
+
+extern uint8 own_ip[4];
 
 void dhcp_send_discover();
 

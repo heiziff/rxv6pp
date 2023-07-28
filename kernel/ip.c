@@ -3,9 +3,8 @@
 #include "defs.h"
 #include "arp.h"
 #include "udp.h"
+#include "dhcp.h"
 
-// TODO: change to bogus and set when we get one with DHCP
-uint8 own_ip[4] = {0, 0, 0, 0};
 
 uint8 bcast_ip[4] = {0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -25,15 +24,11 @@ uint16 ip_checksum(ip_datagram* header) {
     return (~sum);
 }
 
-uint8* get_ip(){
-    return own_ip;
-}
 
 void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
     ip_datagram *packet = kalloc();
     memset(packet, 0, IP_HEADER_SIZE_32 * 4);
 
-    // TODO: does this have to be flipped?
     packet->version_headerlength = hton8((IP_HEADER_SIZE_32 << 4) | 4, 4);
 
     packet->length = hton16(IP_HEADER_SIZE_32 * 4 + length);
@@ -43,7 +38,10 @@ void ip_send_packet(uint8 *dst_ip, uint8 *data, uint8 protocol, uint32 length) {
 
     packet->protocol = protocol;
 
-    memcpy(packet->src_address, get_ip(), IPV4_ADDR_SIZE);
+    uint8 sender_ip[IPV4_ADDR_SIZE];
+    get_ip(sender_ip);
+
+    memcpy(packet->src_address, sender_ip, IPV4_ADDR_SIZE);
 
     memcpy(packet->dst_address, dst_ip, IPV4_ADDR_SIZE);
 

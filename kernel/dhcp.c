@@ -6,6 +6,12 @@
 #include "ethernet.h"
 #include "rtl8139.h"
 
+uint8 own_ip[4] = {0, 0, 0, 0};
+
+void get_ip(uint8 *buf) {
+  memcpy(buf, own_ip, IPV4_ADDR_SIZE);
+}
+
 void dhcp_send_discover() {
     dhcp_packet *packet = kalloc();
     memset(packet, 0, sizeof(dhcp_packet));
