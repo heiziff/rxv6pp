@@ -22,14 +22,14 @@ void arp_init() {
 }
 
 uint8 *arp_lookup(uint8* ip_address) {
-  acquire(&arp_table_lock);
+  // acquire(&arp_table_lock);
   for (int i = 0; i < 512; i++) {
     if (memcmp(ip_address, arp_table[i].ip_addr, 4) == 0) {
-      release(&arp_table_lock);
+      // release(&arp_table_lock);
       return arp_table[i].mac_addr;
     }
   }
-  release(&arp_table_lock);
+  // release(&arp_table_lock);
   return 0;
 }
 
